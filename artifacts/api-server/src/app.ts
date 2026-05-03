@@ -60,6 +60,19 @@ if (devDomain) {
   allowedOrigins.add(`http://${devDomain}`);
 }
 
+const railwayDomain = process.env.RAILWAY_PUBLIC_DOMAIN;
+if (railwayDomain) {
+  allowedOrigins.add(`https://${railwayDomain}`);
+  allowedOrigins.add(`http://${railwayDomain}`);
+}
+
+for (const extra of (process.env.ALLOWED_ORIGINS ?? "")
+  .split(",")
+  .map((d) => d.trim())
+  .filter(Boolean)) {
+  allowedOrigins.add(extra);
+}
+
 app.use(
   cors({
     credentials: true,
