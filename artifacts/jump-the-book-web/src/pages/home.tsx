@@ -1,6 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { motion, AnimatePresence } from "framer-motion";
+import {
+  motion,
+  AnimatePresence,
+  useScroll,
+  useTransform,
+  useSpring,
+  useReducedMotion,
+} from "framer-motion";
 import {
   Sparkles,
   BookOpen,
@@ -15,127 +22,95 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
- * Geometric bunny-hop motif. A dotted parabolic arc with a tiny block-built
- * bunny silhouette at the apex, matching the brand mark's rectangular ears
- * + circular head grammar. Used as a between-section divider, under the H1,
- * and as a quiet personality accent throughout the page.
+ * ScrollBunny: A scroll-reactive bunny matching the front-facing logo grammar.
+ * It tracks the page scroll progress and descends a vertical track on the right side
+ * of the screen, leaving a faint magenta trail above it that brightens with progress.
  *
- * The arc is drawn as 9 circles whose radius peaks at the apex and tapers
- * out at both ends, suggesting motion without animating (animation is
- * available via the `animate` prop for spots that warrant attention).
+ * Accessibility:
+ *   - Decorative, so the wrapper is aria-hidden. We don't want screen readers to
+ *     announce a bunny moving as the user scrolls.
+ *   - Honours `prefers-reduced-motion`: when the user has reduced motion enabled
+ *     we render the bunny statically at the top of its track (no spring, no
+ *     transform-driven movement) so vestibular sensitivity isn't triggered.
  *
- * Colour comes from --jtb-spark (magenta) so this is also the place the
- * new secondary accent lives most visibly.
+ * Implementation note:
+ *   - We animate `top` (a percentage of the parent track's height) rather than a
+ *     transform because percentage-based transforms in framer-motion resolve
+ *     against the element's own size, not the parent track's. For a single small
+ *     fixed element the layout cost is negligible.
  */
-function BunnyHop({
-  width = 280,
-  className = "",
-  animate = false,
-  ariaHidden = true,
-}: {
-  width?: number;
-  className?: string;
-  animate?: boolean;
-  ariaHidden?: boolean;
-}) {
-  // 9 dots traced along a parabola y = -4*(x-0.5)^2 + 1, scaled.
-  const dots = Array.from({ length: 9 }, (_, i) => {
-    const t = i / 8;
-    const x = t;
-    const y = 1 - 4 * (t - 0.5) * (t - 0.5); // 0 → 1 → 0
-    // Radius grows toward the apex so the trail "lifts".
-    const r = 1.2 + y * 2.4;
-    // Opacity tapers at the ends so the trail fades in/out.
-    const o = 0.35 + y * 0.6;
-    return { x, y, r, o };
+function ScrollBunny() {
+  const prefersReducedMotion = useReducedMotion();
+  const { scrollYProgress } = useScroll();
+  const smoothProgress = useSpring(scrollYProgress, {
+    damping: 20,
+    stiffness: 100,
+    mass: 0.8,
   });
-  const W = 100;
-  const H = 34;
-  // Horizontal padding inside the viewBox so the leftmost dot AND the
-  // bunny silhouette at the landing-end get breathing room and never get
-  // clipped by the SVG bounds (or by a parent with negative margin).
-  // The arc spans x = PAD .. (W - PAD) instead of 0 .. W.
-  const PAD_X = 8;
-  const ARC_W = W - PAD_X * 2;
+  const yPos = useTransform(smoothProgress, [0, 1], ["0%", "100%"]);
+
   return (
-    <svg
-      viewBox={`0 0 ${W} ${H}`}
-      width={width}
-      height={(width * H) / W}
-      className={className}
-      aria-hidden={ariaHidden}
-      role={ariaHidden ? undefined : "img"}
-      preserveAspectRatio="xMidYMid meet"
+    <div
+      aria-hidden="true"
+      className="fixed right-4 sm:right-8 top-24 bottom-24 w-[2px] rounded-full bg-gradient-to-b from-transparent via-[var(--jtb-spark-soft)] to-transparent z-40 hidden md:block pointer-events-none"
     >
-      {/* Trailing dotted hop arc */}
-      <g fill="var(--jtb-spark)">
-        {dots.slice(0, 8).map((d, i) => (
-          <circle
-            key={i}
-            cx={PAD_X + d.x * ARC_W}
-            cy={H - 6 - d.y * (H - 12)}
-            r={d.r}
-            opacity={d.o}
+      <motion.div
+        className="absolute left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center gap-2"
+        style={prefersReducedMotion ? { top: "0%" } : { top: yPos }}
+      >
+        <motion.div
+          className="w-[1px] h-12 bg-gradient-to-b from-transparent to-[var(--jtb-spark)] origin-bottom"
+          style={prefersReducedMotion ? { opacity: 0.6 } : { opacity: smoothProgress }}
+        />
+        <div className="relative w-8 h-8 filter drop-shadow-[0_0_8px_var(--jtb-spark)]">
+          <svg
+            viewBox="0 0 100 100"
+            className="w-full h-full overflow-visible"
+            focusable="false"
+            aria-hidden="true"
           >
-            {animate && (
-              <animate
-                attributeName="opacity"
-                values={`${d.o};${Math.min(1, d.o + 0.3)};${d.o}`}
-                dur="2.4s"
-                begin={`${i * 0.12}s`}
-                repeatCount="indefinite"
-              />
-            )}
-          </circle>
-        ))}
-      </g>
-      {/* Bunny silhouette at the landing end — geometric, matches the brand mark */}
-      <g transform={`translate(${PAD_X + dots[8].x * ARC_W - 6}, ${H - 6 - dots[8].y * (H - 12) - 14})`}>
-        {/* Ears — two slim rounded rectangles, slightly splayed */}
-        <rect x="0.6" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(-12 1.8 4.5)" />
-        <rect x="9" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(12 10.2 4.5)" />
-        {/* Head — a small circle */}
-        <circle cx="6" cy="11" r="4.4" fill="var(--jtb-gold-200, #E6C885)" />
-        {/* Eye — single dark dot */}
-        <circle cx="4.6" cy="10.6" r="0.55" fill="#08080B" />
-      </g>
-    </svg>
+            <defs>
+              <linearGradient id="bunny-ear" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stopColor="#E6C885"></stop>
+                <stop offset="100%" stopColor="#C9A96A"></stop>
+              </linearGradient>
+              <radialGradient id="bunny-head" cx="0.5" cy="0.5" r="0.5">
+                <stop offset="0%" stopColor="#E6C885"></stop>
+                <stop offset="70%" stopColor="#C9A96A"></stop>
+                <stop offset="100%" stopColor="#8E7339"></stop>
+              </radialGradient>
+            </defs>
+            {/* Ears */}
+            <rect x="32" y="10" width="12" height="40" rx="6" fill="url(#bunny-ear)" transform="rotate(-12 38 30)"></rect>
+            <rect x="56" y="10" width="12" height="40" rx="6" fill="url(#bunny-ear)" transform="rotate(12 62 30)"></rect>
+            {/* Inner Ears */}
+            <rect x="35" y="18" width="6" height="26" rx="3" fill="#08080B" transform="rotate(-12 38 30)"></rect>
+            <rect x="59" y="18" width="6" height="26" rx="3" fill="#08080B" transform="rotate(12 62 30)"></rect>
+            {/* Head */}
+            <circle cx="50" cy="62" r="26" fill="url(#bunny-head)"></circle>
+            {/* Eyes */}
+            <circle cx="40" cy="58" r="3" fill="#08080B"></circle>
+            <circle cx="60" cy="58" r="3" fill="#08080B"></circle>
+            {/* Nose */}
+            <path d="M50 67 L47 71 L53 71 Z" fill="#08080B"></path>
+          </svg>
+        </div>
+      </motion.div>
+    </div>
   );
 }
 
 /**
  * Signed-out landing screen.
- *
- * Goals (per product brief):
- *   1. Open the demo without gating — and let the visitor *choose* which
- *      book to step into. We surface all four public-domain demo books
- *      (Alice, Dracula, Frankenstein, Sherlock) as clickable cards using
- *      their first scene art as a thumbnail. Each card deep-links to
- *      /experience/{id}?chapter=1, which the experience page already
- *      handles for signed-out visitors via the DEMO_BOOKS fallback.
- *   2. Get straight to the point: Jump the Book is a reading companion
- *      that paints what you're reading, scene-by-scene, spoiler-free.
- *   3. Shout out the image generation: an example gallery of cinematic
- *      scenes for popular contemporary titles (Dungeon Crawler Carl,
- *      Project Hail Mary, The Way of Kings, Mistborn) so visitors can
- *      see the quality bar before they commit.
- *
- * Sign-in/sign-up still live in the header for returning users, but the
- * primary action is the demo picker, not account creation.
  */
 
 interface DemoBook {
-  /** Matches DEMO_BOOKS[].id so /experience/:id resolves correctly. */
   id: string;
   title: string;
   author: string;
-  /** One-line tease, shown under the title. Spoiler-free. */
   hook: string;
-  /** Path under /public — first scene of chapter 1 for that book. */
   thumbnail: string;
-  /** Loading background until the image paints. */
   gradient: string;
-  /** Display tag in the corner, e.g. "Fantasy". */
   badge: string;
 }
 
@@ -246,21 +221,6 @@ const SHOWCASE: Showcase[] = [
 ];
 
 const BASE = import.meta.env.BASE_URL;
-
-/* ──────────────────────────────────────────────────────────────────────────
- * PhoneWalkthrough
- *
- * Interactive in-page demo that teaches the entire mechanic in 10 seconds:
- *
- *   1. "Pick the book you're reading"  → tap Project Hail Mary
- *   2. "Tap the chapter you're on"     → tap Chapter 7
- *   3. "Boom — the scene appears"      → painted scene fills the phone
- *
- * Auto-advances every ~3.5s; pauses on hover; user can tap the highlighted
- * row on each screen to advance manually, or click the progress dots to jump.
- * Shaped like a phone because the app is mobile-first and we want the
- * visitor to immediately picture using this on their own device.
- * ────────────────────────────────────────────────────────────────────────── */
 
 const WALKTHROUGH_SHELF = [
   { title: "Mistborn", author: "Brandon Sanderson", src: "scenes/landing/mistborn.png" },
@@ -441,13 +401,9 @@ function ScreenScene({ onTap }: { onTap: () => void }) {
 
 function PhoneWalkthrough() {
   const [step, setStep] = useState(0);
-  // Pause sources tracked separately so a manual click can't override an
-  // active hover/focus pause. Autoplay only resumes when *both* are false.
   const [hoverPaused, setHoverPaused] = useState(false);
   const [manualPaused, setManualPaused] = useState(false);
   const paused = hoverPaused || manualPaused;
-  // Single managed timer for the manual-pause auto-resume so we never leak
-  // dangling timeouts on rapid taps or unmount.
   const resumeTimerRef = useRef<number | null>(null);
   const STEPS = 3;
 
@@ -458,7 +414,6 @@ function PhoneWalkthrough() {
     return () => window.clearTimeout(t);
   }, [step, paused]);
 
-  // Cleanup any pending resume timer on unmount.
   useEffect(() => {
     return () => {
       if (resumeTimerRef.current !== null) {
@@ -468,9 +423,6 @@ function PhoneWalkthrough() {
     };
   }, []);
 
-  // jumpTo: explicit step change from a user tap (advance arrow or dot).
-  // Pauses for a beat so the step they just chose has time to land, then
-  // resumes autoplay — but only the *manual* pause; hover pause is untouched.
   const jumpTo = (next: number) => {
     setManualPaused(true);
     setStep(next);
@@ -494,7 +446,6 @@ function PhoneWalkthrough() {
       onBlur={() => setHoverPaused(false)}
       data-testid="phone-walkthrough"
     >
-      {/* Brand-tinted halo behind the phone */}
       <div
         aria-hidden="true"
         className="absolute -inset-12 -z-10 pointer-events-none"
@@ -504,13 +455,9 @@ function PhoneWalkthrough() {
           filter: "blur(10px)",
         }}
       />
-      {/* Phone shell */}
       <div className="relative w-[280px] h-[572px] mx-auto rounded-[44px] bg-[#0a0510] p-[10px] ring-2 ring-[hsl(271,30%,18%)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.05)_inset]">
-        {/* Notch */}
         <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-24 h-[22px] rounded-b-2xl bg-black z-30" />
-        {/* Screen */}
         <div className="relative w-full h-full rounded-[34px] overflow-hidden bg-[hsl(271,40%,8%)]">
-          {/* Mock status bar */}
           <div className="absolute top-0 inset-x-0 h-9 flex items-center justify-between px-5 pt-2 text-[10px] text-foreground/70 font-medium z-20 pointer-events-none">
             <span>9:41</span>
             <span className="opacity-70">100%</span>
@@ -522,7 +469,6 @@ function PhoneWalkthrough() {
           </AnimatePresence>
         </div>
       </div>
-      {/* Ground shadow */}
       <div
         aria-hidden="true"
         className="absolute left-1/2 -translate-x-1/2 -bottom-3 w-[60%] h-5 pointer-events-none"
@@ -532,7 +478,6 @@ function PhoneWalkthrough() {
           filter: "blur(6px)",
         }}
       />
-      {/* Progress dots */}
       <div className="flex justify-center items-center gap-1.5 mt-6">
         {[0, 1, 2].map((i) => (
           <button
@@ -556,30 +501,16 @@ function PhoneWalkthrough() {
   );
 }
 
-/* ──────────────────────────────────────────────────────────────────────────
- * ShowcaseCarousel
- *
- * Horizontally-scrolling gallery of generated scenes from popular books.
- * Native CSS scroll-snap drives the swipe behaviour on mobile (no JS swipe
- * library needed); two arrow buttons appear on desktop for mouse users.
- * Edge-fade gradients on both sides hint that more content is off-screen.
- * Scrollbar is hidden visually but the container stays keyboard-scrollable
- * via the focusable arrow buttons and tab into the cards themselves.
- * ────────────────────────────────────────────────────────────────────────── */
 function ShowcaseCarousel() {
   const trackRef = useRef<HTMLDivElement>(null);
   const [canPrev, setCanPrev] = useState(false);
   const [canNext, setCanNext] = useState(true);
 
-  // Watch scroll position so we can dim/disable the arrows at the edges.
   useEffect(() => {
     const el = trackRef.current;
     if (!el) return;
     const update = () => {
       const max = el.scrollWidth - el.clientWidth;
-      // Use a generous edge threshold (16px) so sub-pixel scroll values and
-      // momentum-scroll wobble on touch devices don't briefly flip arrows
-      // on/off near the ends.
       setCanPrev(el.scrollLeft > 16);
       setCanNext(el.scrollLeft < max - 16);
     };
@@ -595,21 +526,17 @@ function ShowcaseCarousel() {
   const scrollByCards = (dir: 1 | -1) => {
     const el = trackRef.current;
     if (!el) return;
-    // Roughly one tile width — measure first child instead of hard-coding.
     const first = el.querySelector<HTMLElement>("[data-carousel-card]");
     const step = first ? first.offsetWidth + 24 : el.clientWidth * 0.85;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
   };
 
   return (
-    <section className="relative border-t border-border/40">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
+    <section className="relative py-16 sm:py-24 bg-gradient-to-b from-background via-[hsl(271,45%,7%)] to-background overflow-hidden">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mb-8 flex items-end justify-between gap-6">
         <div className="space-y-3 max-w-2xl">
           <div className="inline-flex items-center gap-2 jtb-eyebrow">
-            <Sparkles
-              className="w-3.5 h-3.5"
-              style={{ color: "var(--jtb-spark)" }}
-            />
+            <Sparkles className="w-3.5 h-3.5" style={{ color: "var(--jtb-spark)" }} />
             <span>Whatever you're reading — here's a taste</span>
           </div>
           <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
@@ -619,104 +546,82 @@ function ShowcaseCarousel() {
             Real scenes from books people are reading right now — Sanderson,
             Yarros, Maas, Weir, Rothfuss, Herbert, and more. Drop in your
             EPUB and we'll do the same for the chapter you're on, in the
-            visual style you pick. Characters stay consistent across chapters
-            so a face you saw on page 40 still looks like the same person on
-            page 400.
+            visual style you pick. Characters stay consistent across
+            chapters so a face you saw on page 40 still looks like the same
+            person on page 400.
           </p>
+        </div>
+        <div className="hidden md:flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => scrollByCards(-1)}
+            disabled={!canPrev}
+            data-testid="button-showcase-prev"
+            className="w-10 h-10 rounded-full border border-border/60 flex items-center justify-center bg-background/50 backdrop-blur text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-foreground/5 hover:border-foreground/20 transition-all"
+            aria-label="Previous scenes"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={() => scrollByCards(1)}
+            disabled={!canNext}
+            data-testid="button-showcase-next"
+            className="w-10 h-10 rounded-full border border-border/60 flex items-center justify-center bg-background/50 backdrop-blur text-foreground disabled:opacity-30 disabled:cursor-not-allowed hover:bg-foreground/5 hover:border-foreground/20 transition-all"
+            aria-label="Next scenes"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 
-      {/* Carousel: full-bleed so tiles can run off-screen at both edges,
-          giving the "there's more" feel that a contained grid can't. */}
       <div className="relative">
-        {/* Edge-fade gradients (left + right). Pointer-events disabled so
-            they don't intercept swipes/clicks on the cards underneath. */}
-        <div
-          aria-hidden="true"
-          className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 z-10 pointer-events-none bg-gradient-to-r from-background to-transparent"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 z-10 pointer-events-none bg-gradient-to-l from-background to-transparent"
-        />
-
-        {/* Desktop arrow buttons. Hidden on touch-first viewports where
-            swiping is the natural interaction. */}
-        <button
-          type="button"
-          onClick={() => scrollByCards(-1)}
-          disabled={!canPrev}
-          aria-label="Previous scenes"
-          data-testid="button-showcase-prev"
-          className={cn(
-            "hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 h-11 w-11 items-center justify-center rounded-full bg-background/85 backdrop-blur border border-primary/30 text-foreground shadow-lg transition-opacity hover:bg-background hover:border-primary",
-            canPrev ? "opacity-100" : "opacity-0 pointer-events-none",
-          )}
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button
-          type="button"
-          onClick={() => scrollByCards(1)}
-          disabled={!canNext}
-          aria-label="More scenes"
-          data-testid="button-showcase-next"
-          className={cn(
-            "hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 h-11 w-11 items-center justify-center rounded-full bg-background/85 backdrop-blur border border-primary/30 text-foreground shadow-lg transition-opacity hover:bg-background hover:border-primary",
-            canNext ? "opacity-100" : "opacity-0 pointer-events-none",
-          )}
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-
-        {/* Scroll track. Padding-x matches the container gutter so the
-            first/last cards align with the heading text above. */}
+        {/* Left fade */}
+        <div className="absolute left-0 inset-y-0 w-8 md:w-24 bg-gradient-to-r from-[hsl(271,45%,7%)] to-transparent z-10 pointer-events-none" />
+        
         <div
           ref={trackRef}
           data-testid="showcase-carousel"
-          // scroll-pl-* must mirror px-* exactly so snap-mandatory aligns the
+          // scroll-pl-* must mirror pl-* exactly so snap-mandatory aligns the
           // first card at scrollLeft=0. Without this, the browser snaps the
-          // first card past its left padding (e.g. 144px at 1440 viewport),
-          // and the prev-arrow logic thinks we've already scrolled.
-          className="flex gap-5 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-6 lg:px-[max(1.5rem,calc((100vw-72rem)/2))] scroll-pl-4 sm:scroll-pl-6 lg:scroll-pl-[max(1.5rem,calc((100vw-72rem)/2))] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          // first card past its left padding and the prev-arrow logic thinks
+          // we've already scrolled.
+          className="flex gap-5 sm:gap-6 overflow-x-auto snap-x snap-mandatory no-scrollbar pb-10 scroll-smooth pl-4 sm:pl-6 lg:pl-8 pr-4 sm:pr-6 lg:pr-8 scroll-pl-4 sm:scroll-pl-6 lg:scroll-pl-8 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
         >
-          {SHOWCASE.map((s, i) => (
-            <motion.figure
-              key={s.src}
-              data-carousel-card
+          {SHOWCASE.map((item, i) => (
+            <div
+              key={item.title}
               data-testid={`showcase-card-${i}`}
-              initial={{ opacity: 0, y: 16 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-80px" }}
-              transition={{ duration: 0.5, ease: "easeOut" }}
-              className="group relative flex-shrink-0 snap-start w-[78vw] sm:w-[420px] lg:w-[480px] overflow-hidden rounded-xl ring-1 ring-border/60 hover:ring-primary/30 transition-all"
-              style={{ background: s.gradient }}
+              data-carousel-card
+              className="relative shrink-0 snap-start snap-always w-[78vw] sm:w-[420px] lg:w-[480px] rounded-2xl overflow-hidden group ring-1 ring-border/40 hover:ring-primary/30 transition-all"
+              style={{ background: item.gradient }}
             >
               <div className="aspect-[16/10] overflow-hidden">
                 <img
-                  src={`${BASE}${s.src}`}
-                  alt={`Generated scene from ${s.title} by ${s.author}`}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  src={`${BASE}${item.src}`}
+                  alt={`Painted scene from ${item.title}`}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   loading="lazy"
-                  width={1280}
-                  height={800}
                 />
               </div>
-              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
-                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
-                  {s.author}
+              <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black via-black/80 to-transparent">
+                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold mb-1">
+                  {item.author}
                 </p>
-                <p className="font-serif text-base sm:text-lg leading-tight text-white">
-                  {s.title}
+                <p className="font-serif text-lg sm:text-xl text-white leading-tight mb-1">
+                  {item.title}
                 </p>
-                <p className="text-xs text-white/70 mt-0.5">{s.caption}</p>
+                <p className="text-sm text-white/70 line-clamp-2">
+                  {item.caption}
+                </p>
               </div>
-            </motion.figure>
+            </div>
           ))}
         </div>
+
+        {/* Right fade */}
+        <div className="absolute right-0 inset-y-0 w-8 md:w-24 bg-gradient-to-l from-[hsl(271,45%,7%)] to-transparent z-10 pointer-events-none" />
       </div>
 
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-20 pt-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
         <p className="text-center text-xs text-muted-foreground/70">
           Examples generated by Jump the Book. Book titles and authors are
           shown for illustration; covers and trademarks belong to their
@@ -729,80 +634,71 @@ function ShowcaseCarousel() {
 
 export default function Home() {
   return (
-    <div className="min-h-[100dvh] dark bg-background text-foreground">
-      {/* ── Header ────────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 backdrop-blur bg-background/70 border-b border-border/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
-          <Link
-            href="/"
-            className="flex items-center gap-2 group"
-            aria-label="Jump the Book — home"
-          >
-            <img
-              src={`${BASE}logo-mark.svg`}
-              alt=""
-              aria-hidden="true"
-              className="w-7 h-7 transition-transform group-hover:scale-105"
-            />
-            <span className="font-serif text-base sm:text-lg tracking-tight">
-              Jump <em className="not-italic italic text-primary">the</em> Book
+    <div className="min-h-[100dvh] bg-background text-foreground selection:bg-primary/30 pb-16 lg:pb-0 relative overflow-x-hidden">
+      <ScrollBunny />
+      
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <header className="sticky top-0 z-30 bg-gradient-to-b from-background via-background/80 to-transparent pb-4 pt-4 px-4 sm:px-6">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-3 group focus:outline-none">
+            <div className="w-8 h-8 rounded bg-gradient-to-br from-[#E6C885] to-[#8E7339] p-[1px] shadow-[0_0_15px_rgba(230,200,133,0.3)] transition-transform group-hover:scale-105 group-focus-visible:ring-2 ring-primary ring-offset-2 ring-offset-background">
+              <div className="w-full h-full bg-[#08080B] rounded-[3px] flex items-center justify-center">
+                <img
+                  src={`${BASE}logo-mark.svg`}
+                  alt=""
+                  className="w-5 h-5"
+                />
+              </div>
+            </div>
+            <span className="font-serif text-xl tracking-tight text-foreground font-medium group-hover:text-primary transition-colors">
+              Jump the Book
             </span>
           </Link>
-          <nav className="flex items-center gap-1 sm:gap-2">
+          <div className="flex items-center gap-3">
             <Link
               href="/sign-in"
-              className="hidden sm:inline-flex items-center justify-center h-9 px-3 rounded-md text-sm text-muted-foreground hover:text-foreground transition-colors"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center h-9 px-3 sm:px-4 rounded-md bg-primary/15 text-primary border border-primary/30 hover:bg-primary/25 transition-colors text-sm font-medium"
+              className="h-9 px-4 rounded-md bg-[rgba(255,255,255,0.06)] text-sm font-medium hover:bg-[rgba(255,255,255,0.1)] transition-colors border border-border/50"
             >
-              Create account
+              Sign up
             </Link>
-          </nav>
+          </div>
         </div>
       </header>
 
-      {/* ── Hero ──────────────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden">
-        {/* Soft glow behind the hero so the page feels "lit" rather than flat. */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-x-0 -top-40 h-[500px] pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(60% 60% at 50% 30%, rgba(201,169,106,0.18), transparent 70%)",
-          }}
-        />
-        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 pt-12 sm:pt-20 pb-10 sm:pb-16 grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-16 items-center">
+      {/* ── Hero ────────────────────────────────────────────────────────────── */}
+      <section className="relative pt-6 sm:pt-12 pb-20 sm:pb-32 px-4 sm:px-6">
+        {/* Soft background glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_top,rgba(242,42,140,0.15),transparent_70%)] pointer-events-none -z-10" />
+        
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_auto] gap-12 lg:gap-20 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.55, ease: "easeOut" }}
-            className="space-y-6 sm:space-y-7"
+            transition={{ duration: 0.7, ease: "easeOut" }}
+            className="space-y-6 lg:max-w-[600px] text-center lg:text-left z-10"
           >
-            <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <span
-                className="h-1.5 w-1.5 rounded-full"
-                style={{ background: "var(--jtb-spark)" }}
-              />
+            <div className="inline-flex items-center justify-center lg:justify-start gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+              <Sparkles className="w-3.5 h-3.5" />
               <span>See the book you're reading</span>
             </div>
-            <h1 className="font-serif tracking-[-0.025em] leading-[0.98] text-foreground text-[44px] sm:text-[60px] lg:text-[72px]">
+            <h1 className="font-serif text-5xl sm:text-6xl lg:text-7xl leading-[1.05] tracking-tight text-foreground">
               The chapter you're on,{" "}
-              <em className="not-italic italic text-primary">painted.</em>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--jtb-gold-200)] to-[var(--jtb-spark)]">
+                painted.
+              </span>
             </h1>
-            {/* Animated bunny hop trail under the H1 — quiet personality
-                accent and the first appearance of the magenta spark colour. */}
-            <BunnyHop width={240} animate className="-mt-1 opacity-90" />
-            <p className="text-muted-foreground text-base sm:text-lg max-w-[560px] leading-relaxed">
+            <p className="text-muted-foreground text-base sm:text-lg max-w-[560px] mx-auto lg:mx-0 leading-relaxed">
               Tell Jump the Book what you're reading and what chapter you're
               on. We paint the scene — like a movie still, made just for that
               moment. Spoiler-free. Nothing from later in the book leaks in.
             </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 pt-4">
               <Link
                 href="/sign-up"
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
@@ -825,49 +721,29 @@ export default function Home() {
             </p>
           </motion.div>
 
-          {/* Hero right column — interactive phone walkthrough. Replaces the
-              static screenshot with a clickable mini-app that teaches the
-              entire mechanic (pick book → pick chapter → scene appears) in
-              under 10 seconds. Auto-advances; pauses on hover; tappable. */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-            className="relative mx-auto lg:mx-0"
+            className="relative mx-auto lg:mx-0 z-10"
           >
             <PhoneWalkthrough />
           </motion.div>
         </div>
       </section>
 
-      {/* ── Showcase gallery — recognition proof for contemporary titles.
-          Horizontal scrolling carousel: works as native swipe on mobile,
-          arrow buttons on desktop. Snap-aligned so each tile lands cleanly.
-          Edge-fade gradients hint that there's more off-screen. ────────── */}
+      {/* ── Showcase gallery ────────────────────────────────────────────────── */}
       <ShowcaseCarousel />
 
-
-      {/* Hop divider — geometric magenta arc carrying the bunny from the
-          showcase wow into the no-signup classics fallback. */}
-      <div className="relative flex justify-center -my-3 z-10 pointer-events-none">
-        <BunnyHop width={180} className="opacity-80" />
-      </div>
-
-      {/* ── Classics demo picker ──────────────────────────────────────────────
-          Sits AFTER the showcase deliberately: contemporary recognition is
-          the wow moment; classics are the no-signup fallback for visitors
-          not ready to upload. */}
+      {/* ── Classics demo picker ────────────────────────────────────────────── */}
       <section
         id="classics"
-        className="relative border-t border-border/40 bg-[hsl(271,40%,7%)] scroll-mt-16"
+        className="relative bg-gradient-to-b from-background to-[hsl(271,45%,6%)] scroll-mt-16 py-16 sm:py-24"
       >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
-          <div className="space-y-3 max-w-2xl">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10">
+          <div className="space-y-4 max-w-2xl mx-auto text-center">
             <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <Play
-                className="w-3.5 h-3.5"
-                style={{ color: "var(--jtb-spark)" }}
-              />
+              <Play className="w-3.5 h-3.5" style={{ color: "var(--jtb-spark)" }} />
               <span>No book on you? Step into a classic.</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
@@ -893,12 +769,9 @@ export default function Home() {
                 <Link
                   href={`/experience/${demo.id}?chapter=1`}
                   data-testid={`link-demo-${demo.id}`}
-                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 transition-all hover:-translate-y-0.5"
+                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 transition-all hover:-translate-y-1"
                   style={{
                     background: demo.gradient,
-                    // Hover state: magenta glow ring + lift, in addition to
-                    // the translate above. Inline so it can use the spark var.
-                    ["--hover-ring" as string]: "var(--jtb-glow-spark)",
                   }}
                   onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
                     e.currentTarget.style.boxShadow = "var(--jtb-glow-spark)";
@@ -913,11 +786,10 @@ export default function Home() {
                       src={`${BASE}${demo.thumbnail}`}
                       alt=""
                       aria-hidden="true"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                       loading="lazy"
                     />
                   </div>
-                  {/* Top badge — magenta spark border + text */}
                   <span
                     className="absolute top-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/65 backdrop-blur"
                     style={{
@@ -927,7 +799,6 @@ export default function Home() {
                   >
                     {demo.badge}
                   </span>
-                  {/* Bottom info overlay */}
                   <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
                     <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
                       {demo.author}
@@ -938,7 +809,7 @@ export default function Home() {
                     <p className="text-xs text-white/70 mt-1 leading-snug line-clamp-2">
                       {demo.hook}
                     </p>
-                    <span className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
                       Step in
                       <ArrowRight className="w-3.5 h-3.5" />
                     </span>
@@ -951,21 +822,21 @@ export default function Home() {
       </section>
 
       {/* ── Three-up: spoiler-safe / styles / context ─────────────────────── */}
-      <section className="relative border-t border-border/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20">
-          <div className="grid sm:grid-cols-3 gap-6 sm:gap-8">
+      <section className="relative py-16 sm:py-24 bg-gradient-to-b from-[hsl(271,45%,6%)] to-background">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6">
+          <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
             <Feature
-              icon={<ShieldCheck className="w-5 h-5" />}
+              icon={<ShieldCheck className="w-6 h-6" />}
               title="Spoiler-safe by default"
               body="Tell us the chapter you're on. We'll never paint anything that hasn't happened yet — no betrayals, no twists, no dying characters before their time."
             />
             <Feature
-              icon={<ImageIcon className="w-5 h-5" />}
+              icon={<ImageIcon className="w-6 h-6" />}
               title="Six visual styles"
               body="Comic, watercolour, dark cinematic, manga, painterly fantasy, animated storybook. Pick a vibe per book and the whole library inherits the look."
             />
             <Feature
-              icon={<BookOpen className="w-5 h-5" />}
+              icon={<BookOpen className="w-6 h-6" />}
               title="Drop in EPUB or just the title"
               body="Upload your EPUB for chapter-perfect scenes, or sign in and let the open-library lookup ground the art in real characters and places — even without the file."
             />
@@ -974,32 +845,28 @@ export default function Home() {
       </section>
 
       {/* ── Closing CTA ───────────────────────────────────────────────────── */}
-      <section className="relative border-t border-border/40 bg-gradient-to-b from-transparent to-[hsl(271,45%,8%)]">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center space-y-6">
-          {/* Big animated hop arc as the final personality beat before the CTA. */}
-          <div className="flex justify-center">
-            <BunnyHop width={240} animate className="opacity-95" />
-          </div>
-          <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
+      <section className="relative bg-gradient-to-b from-background to-[hsl(271,45%,8%)]">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-20 sm:py-32 text-center space-y-6">
+          <h2 className="font-serif text-4xl sm:text-5xl tracking-tight">
             See your next chapter.
           </h2>
-          <p className="text-muted-foreground max-w-xl mx-auto">
+          <p className="text-muted-foreground text-lg max-w-xl mx-auto">
             The fastest way to get it is to see it. Drop in your EPUB and
             paint the chapter you're on — or step into a classic with no
             signup at all.
           </p>
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-6">
             <Link
               href="/sign-up"
-              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
+              className="inline-flex items-center justify-center gap-2 h-14 px-8 rounded-xl bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-base hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
               data-testid="link-paint-my-book-bottom"
             >
-              <Upload className="w-4 h-4" />
+              <Upload className="w-5 h-5" />
               Paint a scene from my book
             </Link>
             <a
               href="#classics"
-              className="inline-flex items-center justify-center h-12 px-6 rounded-[10px] bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-sm hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
+              className="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-base hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
               data-testid="link-try-classic-bottom"
             >
               Try it on a classic
@@ -1008,7 +875,7 @@ export default function Home() {
         </div>
       </section>
 
-      <footer className="border-t border-border/40 py-8 text-center jtb-label">
+      <footer className="py-8 text-center jtb-label opacity-70 bg-[hsl(271,45%,8%)]">
         Reading is for readers.
       </footer>
     </div>
@@ -1025,12 +892,18 @@ function Feature({
   body: string;
 }) {
   return (
-    <div className="space-y-3">
-      <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center">
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "-40px" }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="space-y-4"
+    >
+      <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-[0_0_20px_rgba(242,42,140,0.15)]">
         {icon}
       </div>
-      <h3 className="font-serif text-xl tracking-tight">{title}</h3>
-      <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
-    </div>
+      <h3 className="font-serif text-2xl tracking-tight text-foreground">{title}</h3>
+      <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
+    </motion.div>
   );
 }
