@@ -210,6 +210,30 @@ uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s6.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "eriq3SKkMFQOXJKWPaHXI"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/fourthwing.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "fByPPbC1SaoqZlDVLFPBc"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/acotar.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "6ohwZuV9mnDUaiX0tDE9l"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/dune.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8ADkvztqmS85fvrpM4qdE"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/nameofthewind.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "XieLZpR1-U_jKTnjGl8Y9"
 uri = "file://app-store/icon/icon-1024.png"

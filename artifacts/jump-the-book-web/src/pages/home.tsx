@@ -7,6 +7,8 @@ import {
   ImageIcon,
   ShieldCheck,
   ArrowRight,
+  ChevronLeft,
+  ChevronRight,
   Play,
   Upload,
 } from "lucide-react";
@@ -200,6 +202,13 @@ const SHOWCASE: Showcase[] = [
     gradient: "linear-gradient(135deg, #06121f, #0a2440, #2a4a7a)",
   },
   {
+    src: "scenes/landing/fourthwing.png",
+    title: "Fourth Wing",
+    author: "Rebecca Yarros",
+    caption: "On the parapet at Basgiath.",
+    gradient: "linear-gradient(135deg, #0a0612, #2a0a3a, #4a1a6a)",
+  },
+  {
     src: "scenes/landing/stormlight.png",
     title: "The Way of Kings",
     author: "Brandon Sanderson",
@@ -207,11 +216,32 @@ const SHOWCASE: Showcase[] = [
     gradient: "linear-gradient(135deg, #0a0a1a, #1a1a3a, #3a3a7a)",
   },
   {
+    src: "scenes/landing/acotar.png",
+    title: "A Court of Thorns and Roses",
+    author: "Sarah J. Maas",
+    caption: "The Spring Court, by moonlight.",
+    gradient: "linear-gradient(135deg, #0a1a0e, #1a3a2a, #4a6a4a)",
+  },
+  {
+    src: "scenes/landing/dune.png",
+    title: "Dune",
+    author: "Frank Herbert",
+    caption: "A worm crests the dune.",
+    gradient: "linear-gradient(135deg, #1a0a04, #4a1a08, #8a4a1a)",
+  },
+  {
     src: "scenes/landing/mistborn.png",
     title: "Mistborn: The Final Empire",
     author: "Brandon Sanderson",
     caption: "Mist over Luthadel.",
     gradient: "linear-gradient(135deg, #1a0a08, #3a0a08, #6a1a18)",
+  },
+  {
+    src: "scenes/landing/nameofthewind.png",
+    title: "The Name of the Wind",
+    author: "Patrick Rothfuss",
+    caption: "Silence at the Waystone Inn.",
+    gradient: "linear-gradient(135deg, #0a0608, #2a1408, #4a2a18)",
   },
 ];
 
@@ -526,6 +556,177 @@ function PhoneWalkthrough() {
   );
 }
 
+/* ──────────────────────────────────────────────────────────────────────────
+ * ShowcaseCarousel
+ *
+ * Horizontally-scrolling gallery of generated scenes from popular books.
+ * Native CSS scroll-snap drives the swipe behaviour on mobile (no JS swipe
+ * library needed); two arrow buttons appear on desktop for mouse users.
+ * Edge-fade gradients on both sides hint that more content is off-screen.
+ * Scrollbar is hidden visually but the container stays keyboard-scrollable
+ * via the focusable arrow buttons and tab into the cards themselves.
+ * ────────────────────────────────────────────────────────────────────────── */
+function ShowcaseCarousel() {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const [canPrev, setCanPrev] = useState(false);
+  const [canNext, setCanNext] = useState(true);
+
+  // Watch scroll position so we can dim/disable the arrows at the edges.
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth;
+      // Use a generous edge threshold (16px) so sub-pixel scroll values and
+      // momentum-scroll wobble on touch devices don't briefly flip arrows
+      // on/off near the ends.
+      setCanPrev(el.scrollLeft > 16);
+      setCanNext(el.scrollLeft < max - 16);
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      el.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  const scrollByCards = (dir: 1 | -1) => {
+    const el = trackRef.current;
+    if (!el) return;
+    // Roughly one tile width — measure first child instead of hard-coding.
+    const first = el.querySelector<HTMLElement>("[data-carousel-card]");
+    const step = first ? first.offsetWidth + 24 : el.clientWidth * 0.85;
+    el.scrollBy({ left: dir * step, behavior: "smooth" });
+  };
+
+  return (
+    <section className="relative border-t border-border/40">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
+        <div className="space-y-3 max-w-2xl">
+          <div className="inline-flex items-center gap-2 jtb-eyebrow">
+            <Sparkles
+              className="w-3.5 h-3.5"
+              style={{ color: "var(--jtb-spark)" }}
+            />
+            <span>Whatever you're reading — here's a taste</span>
+          </div>
+          <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
+            Recognise any of these?
+          </h2>
+          <p className="text-muted-foreground leading-relaxed">
+            Real scenes from books people are reading right now — Sanderson,
+            Yarros, Maas, Weir, Rothfuss, Herbert, and more. Drop in your
+            EPUB and we'll do the same for the chapter you're on, in the
+            visual style you pick. Characters stay consistent across chapters
+            so a face you saw on page 40 still looks like the same person on
+            page 400.
+          </p>
+        </div>
+      </div>
+
+      {/* Carousel: full-bleed so tiles can run off-screen at both edges,
+          giving the "there's more" feel that a contained grid can't. */}
+      <div className="relative">
+        {/* Edge-fade gradients (left + right). Pointer-events disabled so
+            they don't intercept swipes/clicks on the cards underneath. */}
+        <div
+          aria-hidden="true"
+          className="absolute left-0 top-0 bottom-0 w-12 sm:w-20 z-10 pointer-events-none bg-gradient-to-r from-background to-transparent"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute right-0 top-0 bottom-0 w-12 sm:w-20 z-10 pointer-events-none bg-gradient-to-l from-background to-transparent"
+        />
+
+        {/* Desktop arrow buttons. Hidden on touch-first viewports where
+            swiping is the natural interaction. */}
+        <button
+          type="button"
+          onClick={() => scrollByCards(-1)}
+          disabled={!canPrev}
+          aria-label="Previous scenes"
+          data-testid="button-showcase-prev"
+          className={cn(
+            "hidden md:flex absolute left-3 top-1/2 -translate-y-1/2 z-20 h-11 w-11 items-center justify-center rounded-full bg-background/85 backdrop-blur border border-primary/30 text-foreground shadow-lg transition-opacity hover:bg-background hover:border-primary",
+            canPrev ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => scrollByCards(1)}
+          disabled={!canNext}
+          aria-label="More scenes"
+          data-testid="button-showcase-next"
+          className={cn(
+            "hidden md:flex absolute right-3 top-1/2 -translate-y-1/2 z-20 h-11 w-11 items-center justify-center rounded-full bg-background/85 backdrop-blur border border-primary/30 text-foreground shadow-lg transition-opacity hover:bg-background hover:border-primary",
+            canNext ? "opacity-100" : "opacity-0 pointer-events-none",
+          )}
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        {/* Scroll track. Padding-x matches the container gutter so the
+            first/last cards align with the heading text above. */}
+        <div
+          ref={trackRef}
+          data-testid="showcase-carousel"
+          // scroll-pl-* must mirror px-* exactly so snap-mandatory aligns the
+          // first card at scrollLeft=0. Without this, the browser snaps the
+          // first card past its left padding (e.g. 144px at 1440 viewport),
+          // and the prev-arrow logic thinks we've already scrolled.
+          className="flex gap-5 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth px-4 sm:px-6 lg:px-[max(1.5rem,calc((100vw-72rem)/2))] scroll-pl-4 sm:scroll-pl-6 lg:scroll-pl-[max(1.5rem,calc((100vw-72rem)/2))] [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        >
+          {SHOWCASE.map((s, i) => (
+            <motion.figure
+              key={s.src}
+              data-carousel-card
+              data-testid={`showcase-card-${i}`}
+              initial={{ opacity: 0, y: 16 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="group relative flex-shrink-0 snap-start w-[78vw] sm:w-[420px] lg:w-[480px] overflow-hidden rounded-xl ring-1 ring-border/60 hover:ring-primary/30 transition-all"
+              style={{ background: s.gradient }}
+            >
+              <div className="aspect-[16/10] overflow-hidden">
+                <img
+                  src={`${BASE}${s.src}`}
+                  alt={`Generated scene from ${s.title} by ${s.author}`}
+                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
+                  loading="lazy"
+                  width={1280}
+                  height={800}
+                />
+              </div>
+              <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
+                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
+                  {s.author}
+                </p>
+                <p className="font-serif text-base sm:text-lg leading-tight text-white">
+                  {s.title}
+                </p>
+                <p className="text-xs text-white/70 mt-0.5">{s.caption}</p>
+              </div>
+            </motion.figure>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 pb-12 sm:pb-20 pt-6">
+        <p className="text-center text-xs text-muted-foreground/70">
+          Examples generated by Jump the Book. Book titles and authors are
+          shown for illustration; covers and trademarks belong to their
+          respective rights holders.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   return (
     <div className="min-h-[100dvh] dark bg-background text-foreground">
@@ -640,73 +841,11 @@ export default function Home() {
       </section>
 
       {/* ── Showcase gallery — recognition proof for contemporary titles.
-          This is the "wow" moment, placed RIGHT after the hero so visitors
-          see a book they've actually read (DCC, PHM, Sanderson) painted as
-          a cinematic scene. The recognition does the selling. ──────────── */}
-      <section className="relative border-t border-border/40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-10">
-          <div className="space-y-3 max-w-2xl">
-            <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <Sparkles
-                className="w-3.5 h-3.5"
-                style={{ color: "var(--jtb-spark)" }}
-              />
-              <span>Whatever you're reading — here's a taste</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
-              Recognise any of these?
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              Real scenes from books people are reading right now —
-              Brandon Sanderson, Andy Weir, Matt Dinniman. Drop in your
-              EPUB and we'll do the same for the chapter you're on, in
-              the visual style you pick. Characters stay consistent across
-              chapters so a face you saw on page 40 still looks like the
-              same person on page 400.
-            </p>
-          </div>
+          Horizontal scrolling carousel: works as native swipe on mobile,
+          arrow buttons on desktop. Snap-aligned so each tile lands cleanly.
+          Edge-fade gradients hint that there's more off-screen. ────────── */}
+      <ShowcaseCarousel />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {SHOWCASE.map((s, i) => (
-              <motion.figure
-                key={s.src}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-80px" }}
-                transition={{ duration: 0.5, delay: i * 0.05, ease: "easeOut" }}
-                className="group relative overflow-hidden rounded-xl ring-1 ring-border/60 hover:ring-primary/30 transition-all"
-                style={{ background: s.gradient }}
-              >
-                <div className="aspect-[16/10] overflow-hidden">
-                  <img
-                    src={`${BASE}${s.src}`}
-                    alt={`Generated scene from ${s.title} by ${s.author}`}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.03]"
-                    loading="lazy"
-                    width={1280}
-                    height={800}
-                  />
-                </div>
-                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
-                  <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
-                    {s.author}
-                  </p>
-                  <p className="font-serif text-base sm:text-lg leading-tight text-white">
-                    {s.title}
-                  </p>
-                  <p className="text-xs text-white/70 mt-0.5">{s.caption}</p>
-                </div>
-              </motion.figure>
-            ))}
-          </div>
-
-          <p className="text-center text-xs text-muted-foreground/70 pt-2">
-            Examples generated by Jump the Book. Book titles and authors are
-            shown for illustration; covers and trademarks belong to their
-            respective rights holders.
-          </p>
-        </div>
-      </section>
 
       {/* Hop divider — geometric magenta arc carrying the bunny from the
           showcase wow into the no-signup classics fallback. */}
