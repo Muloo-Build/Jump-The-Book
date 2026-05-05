@@ -150,6 +150,30 @@ uri = "file://artifacts/jump-the-book-web/public/avatars/bunny-cosmic.png"
 type = "image"
 title = "bunny cosmic"
 
+[[generated]]
+id = "HUUtJ76pGpmkdTvmBe9F2"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/dcc.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "z4QMgagpu0DidHe1jeJg1"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/phm.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "xf3WXpFkIssX8WSYy0JiS"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/stormlight.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "8U6IlfxXU0vwVFYWNWt7c"
+uri = "file://artifacts/jump-the-book-web/public/scenes/landing/mistborn.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "XieLZpR1-U_jKTnjGl8Y9"
 uri = "file://app-store/icon/icon-1024.png"
