@@ -116,6 +116,15 @@
   --jtb-accent-hi: var(--jtb-gold-200);
   --jtb-accent-on: #1A1208;
 
+  /* Magenta "spark" — secondary accent that ties to the cyan-and-magenta
+     dungeon lighting in the hero scene. Used sparingly: eyebrow dots,
+     hover rings, hop-arc trails, link underlines. Not a replacement for
+     gold; gold remains the primary CTA colour. */
+  --jtb-spark:     #FF3DA5;
+  --jtb-spark-hi:  #FF7AC2;
+  --jtb-spark-soft: rgba(255,61,165,0.18);
+  --jtb-glow-spark: 0 0 0 1px rgba(255,61,165,0.32), 0 6px 30px rgba(255,61,165,0.22);
+
   --jtb-danger:  #C9624A;
   --jtb-success: #6BA37A;
 
