@@ -46,6 +46,12 @@ function BunnyHop({
   });
   const W = 100;
   const H = 34;
+  // Horizontal padding inside the viewBox so the leftmost dot AND the
+  // bunny silhouette at the landing-end get breathing room and never get
+  // clipped by the SVG bounds (or by a parent with negative margin).
+  // The arc spans x = PAD .. (W - PAD) instead of 0 .. W.
+  const PAD_X = 8;
+  const ARC_W = W - PAD_X * 2;
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
@@ -61,7 +67,7 @@ function BunnyHop({
         {dots.slice(0, 8).map((d, i) => (
           <circle
             key={i}
-            cx={d.x * W}
+            cx={PAD_X + d.x * ARC_W}
             cy={H - 6 - d.y * (H - 12)}
             r={d.r}
             opacity={d.o}
@@ -78,8 +84,8 @@ function BunnyHop({
           </circle>
         ))}
       </g>
-      {/* Bunny silhouette at the apex — geometric, matches the brand mark */}
-      <g transform={`translate(${dots[8].x * W - 6}, ${H - 6 - dots[8].y * (H - 12) - 14})`}>
+      {/* Bunny silhouette at the landing end — geometric, matches the brand mark */}
+      <g transform={`translate(${PAD_X + dots[8].x * ARC_W - 6}, ${H - 6 - dots[8].y * (H - 12) - 14})`}>
         {/* Ears — two slim rounded rectangles, slightly splayed */}
         <rect x="0.6" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(-12 1.8 4.5)" />
         <rect x="9" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(12 10.2 4.5)" />
@@ -277,7 +283,7 @@ export default function Home() {
             </h1>
             {/* Animated bunny hop trail under the H1 — quiet personality
                 accent and the first appearance of the magenta spark colour. */}
-            <BunnyHop width={220} animate className="-mt-1 -ml-1 opacity-90" />
+            <BunnyHop width={240} animate className="-mt-1 opacity-90" />
             <p className="text-muted-foreground text-base sm:text-lg max-w-[560px] leading-relaxed">
               Jump the Book turns the chapter you're on into spoiler-safe,
               cinematic scene art — so the world stops being a wall of text and
@@ -306,15 +312,32 @@ export default function Home() {
             </p>
           </motion.div>
 
-          {/* Hero image — first showcase tile, bigger and tilted. */}
+          {/* Hero image — first showcase tile, anchored on the right column.
+              Three layered effects make it feel "placed" rather than floating:
+                1. A magenta radial glow behind the card ties it to the brand
+                   and acts as a soft halo so the card has a "lit" quality.
+                2. A stronger frame (ring + inset highlight + deeper shadow)
+                   makes the card feel like an object, not a screenshot.
+                3. A soft elliptical "ground shadow" below gives it weight,
+                   so it's standing on something instead of hanging mid-air. */}
           <motion.div
             initial={{ opacity: 0, y: 20, rotate: -1 }}
             animate={{ opacity: 1, y: 0, rotate: -1.5 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-            className="relative mx-auto lg:mx-0 w-full max-w-[520px]"
+            className="relative mx-auto lg:mx-0 w-full max-w-[540px]"
           >
+            {/* Brand-tinted halo behind the card */}
             <div
-              className="aspect-[16/10] rounded-2xl overflow-hidden ring-1 ring-primary/25 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.6)]"
+              aria-hidden="true"
+              className="absolute -inset-10 -z-10 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(60% 55% at 55% 45%, rgba(242,42,140,0.22), rgba(242,42,140,0.06) 55%, transparent 75%)",
+                filter: "blur(8px)",
+              }}
+            />
+            <div
+              className="aspect-[16/10] rounded-2xl overflow-hidden ring-1 ring-primary/40 shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.04)_inset]"
               style={{ background: SHOWCASE[0].gradient }}
             >
               <img
@@ -326,6 +349,16 @@ export default function Home() {
                 height={800}
               />
             </div>
+            {/* Ground shadow — soft ellipse beneath the card so it has weight */}
+            <div
+              aria-hidden="true"
+              className="absolute left-1/2 -translate-x-1/2 -bottom-6 w-[78%] h-6 pointer-events-none"
+              style={{
+                background:
+                  "radial-gradient(50% 100% at 50% 0%, rgba(0,0,0,0.55), transparent 70%)",
+                filter: "blur(6px)",
+              }}
+            />
             <div className="absolute -bottom-3 -right-3 sm:-bottom-4 sm:-right-4 bg-background/95 backdrop-blur border border-primary/30 rounded-lg px-3 py-2 shadow-xl">
               <p className="text-[10px] uppercase tracking-wider text-primary/80 font-semibold">
                 Now reading
