@@ -174,6 +174,42 @@ uri = "file://artifacts/jump-the-book-web/public/scenes/landing/mistborn.png"
 type = "image"
 title = "generated_image"
 
+[[generated]]
+id = "m0EpD4n2HCqazJL6liKe6"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s1.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QIIJG_iEaE6sdeKb1TT2T"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s2.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Q_GaEHYPErxzPCjXF7Ow7"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s3.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "x25wuMov-KcmfxLafV3nQ"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s4.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "Mig-yv7M9v524YEmZDWXA"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s5.png"
+type = "image"
+title = "generated_image"
+
+[[generated]]
+id = "QR3lQ0nBAsLKCaMGlUb4M"
+uri = "file://artifacts/jump-the-book-web/public/scenes/alice-ch1-s6.png"
+type = "image"
+title = "generated_image"
+
 [[outputs]]
 id = "XieLZpR1-U_jKTnjGl8Y9"
 uri = "file://app-store/icon/icon-1024.png"
