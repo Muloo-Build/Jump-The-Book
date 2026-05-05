@@ -124,8 +124,8 @@ export default function Home() {
               <span>The reading companion that paints what you read</span>
             </div>
             <h1 className="font-serif tracking-[-0.025em] leading-[0.98] text-foreground text-[44px] sm:text-[64px] lg:text-[76px]">
-              See the book.{" "}
-              <em className="not-italic italic text-primary">Scene by scene.</em>
+              Visualise any book.{" "}
+              <em className="not-italic italic text-primary">Any chapter.</em>
             </h1>
             <p className="text-muted-foreground text-base sm:text-lg max-w-[560px] leading-relaxed">
               Jump the Book turns the chapter you're on into spoiler-safe,
