@@ -287,7 +287,7 @@ export default function Home() {
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
               <a
                 href="#try-demo"
-                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[var(--jtb-accent-hi)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_24px_rgba(201,169,106,0.28)]"
+                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
                 data-testid="link-try-demo"
               >
                 Pick a demo
@@ -344,7 +344,7 @@ export default function Home() {
       {/* ── Try-a-demo picker ─────────────────────────────────────────────── */}
       <section
         id="try-demo"
-        className="relative border-t border-border/40 bg-[hsl(232,17%,5%)] scroll-mt-16"
+        className="relative border-t border-border/40 bg-[hsl(271,40%,7%)] scroll-mt-16"
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
           <div className="space-y-3 max-w-2xl">
@@ -529,7 +529,7 @@ export default function Home() {
       </section>
 
       {/* ── Closing CTA ───────────────────────────────────────────────────── */}
-      <section className="relative border-t border-border/40 bg-gradient-to-b from-transparent to-[hsl(232,17%,6%)]">
+      <section className="relative border-t border-border/40 bg-gradient-to-b from-transparent to-[hsl(271,45%,8%)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center space-y-6">
           {/* Big animated hop arc as the final personality beat before the CTA. */}
           <div className="flex justify-center">
@@ -546,7 +546,7 @@ export default function Home() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
             <a
               href="#try-demo"
-              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[var(--jtb-accent-hi)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_24px_rgba(201,169,106,0.28)]"
+              className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
               data-testid="link-try-demo-bottom"
             >
               Pick a demo

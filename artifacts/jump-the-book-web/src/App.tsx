@@ -77,51 +77,54 @@ const clerkAppearance = {
     logoImageUrl: `${window.location.origin}${basePath}/logo-mark.svg`,
   },
   variables: {
-    // Gold-400 = #C9A96A (HSL 38 47% 60%)
-    colorPrimary: "hsl(38, 47%, 60%)",
-    colorForeground: "hsl(43, 41%, 88%)",
-    colorMutedForeground: "hsl(33, 9%, 58%)",
+    // Twilight Magenta v2.0 — magenta primary on aubergine.
+    // mag-500 = #D81B7A (HSL 329 78% 48%) — AA-safe with white text.
+    colorPrimary: "hsl(329, 78%, 48%)",
+    colorForeground: "hsl(43, 41%, 90%)",
+    colorMutedForeground: "hsl(33, 9%, 60%)",
     colorDanger: "hsl(9, 53%, 54%)",
-    colorBackground: "hsl(240, 17%, 4%)",
-    colorInput: "hsl(230, 16%, 12%)",
-    colorInputForeground: "hsl(43, 41%, 88%)",
-    colorNeutral: "hsl(232, 14%, 18%)",
+    colorBackground: "hsl(271, 50%, 6%)",  // aub-900
+    colorInput: "hsl(271, 30%, 13%)",      // aub-input
+    colorInputForeground: "hsl(43, 41%, 90%)",
+    colorNeutral: "hsl(271, 25%, 18%)",    // aub-600 hover surface
     fontFamily: "'Inter', system-ui, sans-serif",
     borderRadius: "0.625rem",
   },
   elements: {
     rootBox: "w-full flex justify-center",
     cardBox:
-      "bg-[hsl(232,17%,7%)] border border-[rgba(201,169,106,0.18)] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl shadow-[rgba(201,169,106,0.08)]",
+      "bg-[hsl(271,40%,9%)] border border-[rgba(242,42,140,0.18)] rounded-2xl w-[440px] max-w-full overflow-hidden shadow-2xl shadow-[rgba(242,42,140,0.10)]",
     card: "!shadow-none !border-0 !bg-transparent !rounded-none",
     footer: "!shadow-none !border-0 !bg-transparent !rounded-none",
     headerTitle:
       "font-serif text-2xl font-medium text-[hsl(43,41%,92%)] tracking-tight",
-    headerSubtitle: "text-[hsl(33,9%,58%)] text-sm",
+    headerSubtitle: "text-[hsl(33,9%,60%)] text-sm",
     socialButtonsBlockButton:
-      "border-[rgba(201,169,106,0.18)] hover:bg-[hsl(232,14%,14%)] transition-colors",
+      "border-[rgba(242,42,140,0.20)] hover:bg-[hsl(271,25%,16%)] transition-colors",
     socialButtonsBlockButtonText:
-      "text-[hsl(43,41%,88%)] font-medium",
-    formFieldLabel: "text-[hsl(43,41%,82%)] font-medium",
+      "text-[hsl(43,41%,90%)] font-medium",
+    formFieldLabel: "text-[hsl(43,41%,84%)] font-medium",
     formFieldInput:
-      "bg-[hsl(230,16%,12%)] border-[rgba(201,169,106,0.18)] text-[hsl(43,41%,88%)]",
+      "bg-[hsl(271,30%,13%)] border-[rgba(242,42,140,0.20)] text-[hsl(43,41%,90%)]",
     formButtonPrimary:
-      "bg-[hsl(38,47%,60%)] hover:brightness-110 text-[hsl(30,50%,6%)] font-semibold transition-[filter]",
+      "bg-[hsl(329,78%,48%)] hover:brightness-110 text-white font-semibold transition-[filter]",
+    // Footer "Sign up" / "Sign in" link keeps a warm gold tint — the only
+    // intentional gold inside Clerk, nodding to the dual-metal brand.
     footerActionLink:
       "text-[hsl(41,65%,71%)] hover:text-[hsl(43,41%,92%)] font-medium",
-    footerActionText: "text-[hsl(33,9%,58%)]",
-    footerAction: "border-t border-[rgba(201,169,106,0.10)] pt-4",
-    dividerLine: "bg-[rgba(201,169,106,0.18)]",
+    footerActionText: "text-[hsl(33,9%,60%)]",
+    footerAction: "border-t border-[rgba(242,42,140,0.12)] pt-4",
+    dividerLine: "bg-[rgba(242,42,140,0.20)]",
     dividerText:
-      "text-[hsl(31,11%,38%)] text-[10px] uppercase tracking-[0.2em] font-mono",
-    identityPreviewEditButton: "text-[hsl(41,65%,71%)]",
+      "text-[hsl(31,11%,42%)] text-[10px] uppercase tracking-[0.2em] font-mono",
+    identityPreviewEditButton: "text-[hsl(329,90%,72%)]",
     formFieldSuccessText: "text-[hsl(165,22%,55%)]",
-    alertText: "text-[hsl(43,41%,88%)]",
+    alertText: "text-[hsl(43,41%,90%)]",
     alert: "bg-[hsl(9,30%,12%)] border-[hsl(9,40%,28%)]",
     logoBox: "mb-2",
     logoImage: "h-10 w-auto",
     otpCodeFieldInput:
-      "bg-[hsl(230,16%,12%)] border-[rgba(201,169,106,0.18)] text-[hsl(43,41%,88%)]",
+      "bg-[hsl(271,30%,13%)] border-[rgba(242,42,140,0.20)] text-[hsl(43,41%,90%)]",
     formFieldRow: "space-y-2",
     main: "px-6 py-2",
   },

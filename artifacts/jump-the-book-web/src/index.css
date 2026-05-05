@@ -10,7 +10,7 @@
   opacity: 1;
 }
 .cl-formFieldInput:focus {
-  outline: 2px solid hsl(38 47% 60%);
+  outline: 2px solid hsl(329 78% 48%);
   outline-offset: -1px;
 }
 
@@ -116,14 +116,33 @@
   --jtb-accent-hi: var(--jtb-gold-200);
   --jtb-accent-on: #1A1208;
 
-  /* Magenta "spark" — secondary accent that ties to the cyan-and-magenta
-     dungeon lighting in the hero scene. Used sparingly: eyebrow dots,
-     hover rings, hop-arc trails, link underlines. Not a replacement for
-     gold; gold remains the primary CTA colour. */
-  --jtb-spark:     #FF3DA5;
-  --jtb-spark-hi:  #FF7AC2;
-  --jtb-spark-soft: rgba(255,61,165,0.18);
-  --jtb-glow-spark: 0 0 0 1px rgba(255,61,165,0.32), 0 6px 30px rgba(255,61,165,0.22);
+  /* ── Twilight Magenta — v2.0 brand accent (PRIMARY) ───────────────
+     Magenta is now the lead colour: CTAs, focus rings, hover glows,
+     hop-arc trails. Gold (--jtb-accent) remains as a literary metallic
+     SECONDARY for eyebrows, tags, and fine-grain detail — that pairing
+     is the brand: two metals (warm gold + neon magenta) on aubergine. */
+  --jtb-mag-200:   #FFB6DB;
+  --jtb-mag-300:   #FF7AC2;
+  --jtb-mag-400:   #F22A8C;   /* PRIMARY brand magenta */
+  --jtb-mag-500:   #D81B7A;
+  --jtb-mag-600:   #B01362;
+
+  /* Spark tokens are kept as aliases for the magenta primary so all the
+     hop-arc / eyebrow-dot code that already references --jtb-spark keeps
+     working without churn. */
+  --jtb-spark:     var(--jtb-mag-400);
+  --jtb-spark-hi:  var(--jtb-mag-300);
+  --jtb-spark-soft: rgba(242,42,140,0.18);
+  --jtb-glow-spark: 0 0 0 1px rgba(242,42,140,0.34), 0 6px 30px rgba(242,42,140,0.28);
+
+  /* Aubergine ink ramp — replaces the neutral ink for surfaces in dark
+     mode. Subtle purple cast that makes the magenta primary feel placed,
+     not pasted on. */
+  --jtb-aub-950:  #0A0612;
+  --jtb-aub-900:  #150B22;
+  --jtb-aub-800:  #1B1029;
+  --jtb-aub-700:  #221634;
+  --jtb-aub-600:  #2A1F3A;
 
   --jtb-danger:  #C9624A;
   --jtb-success: #6BA37A;
@@ -221,44 +240,47 @@
   --elevate-1: rgba(255,255,255, .04);
   --elevate-2: rgba(255,255,255, .09);
 
-  /* Refined black + warm gold — derived from the v1.0 handoff */
-  --background: 240 17% 4%;       /* ink-900 #08080B */
-  --foreground: 43 41% 88%;       /* paper   #EDE6D3 */
-  --border: 38 25% 22% / 0.18;    /* gold-tinted hairline */
-  --card: 232 17% 7%;             /* ink-800 #0F1015 */
-  --card-foreground: 43 41% 88%;
-  --card-border: 38 25% 22% / 0.22;
+  /* Twilight Magenta v2.0 — magenta primary on aubergine ground.
+     Gold continues to live in --jtb-accent for eyebrows / tags / fine
+     metallic detail; here we only retune the shadcn HSL bridge so every
+     `bg-primary`, `text-primary`, `ring-primary` becomes magenta. */
+  --background: 271 50% 6%;        /* aub-900 #150B22 */
+  --foreground: 43 41% 90%;        /* paper #EDE6D3 — unchanged */
+  --border: 271 25% 30% / 0.22;    /* purple-tinted hairline */
+  --card: 271 40% 9%;              /* aub-800 #1B1029 */
+  --card-foreground: 43 41% 90%;
+  --card-border: 271 25% 30% / 0.26;
 
-  --sidebar: 232 17% 7%;
-  --sidebar-foreground: 43 41% 84%;
-  --sidebar-border: 230 16% 14%;
-  --sidebar-primary: 38 47% 60%;  /* gold-400 #C9A96A */
-  --sidebar-primary-foreground: 30 50% 6%;
-  --sidebar-accent: 232 14% 14%;  /* ink-600 hover */
+  --sidebar: 271 40% 9%;
+  --sidebar-foreground: 43 41% 86%;
+  --sidebar-border: 271 25% 18%;
+  --sidebar-primary: 329 88% 56%;  /* mag-400 #F22A8C */
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 271 25% 16%;   /* aub-600 hover */
   --sidebar-accent-foreground: 43 41% 92%;
-  --sidebar-ring: 38 47% 60%;
+  --sidebar-ring: 329 88% 56%;
 
-  --popover: 230 16% 10%;         /* ink-700 popovers */
-  --popover-foreground: 43 41% 88%;
-  --popover-border: 38 25% 22% / 0.22;
+  --popover: 271 35% 11%;          /* aub-700 popovers */
+  --popover-foreground: 43 41% 90%;
+  --popover-border: 271 25% 30% / 0.26;
 
-  --primary: 38 47% 60%;          /* gold-400 PRIMARY */
-  --primary-foreground: 30 50% 6%;
+  --primary: 329 78% 48%;          /* mag-500 #D81B7A — PRIMARY (AA-safe with white) */
+  --primary-foreground: 0 0% 100%; /* white text on magenta — 4.8:1 contrast */
 
-  --secondary: 232 17% 7%;
-  --secondary-foreground: 43 41% 88%;
+  --secondary: 271 40% 9%;
+  --secondary-foreground: 43 41% 90%;
 
-  --muted: 232 17% 7%;
-  --muted-foreground: 33 9% 58%;  /* text-dim #9D958A */
+  --muted: 271 40% 9%;
+  --muted-foreground: 33 9% 60%;   /* text-dim #9D958A — unchanged */
 
-  --accent: 232 14% 14%;          /* ink-600 hover */
+  --accent: 271 25% 16%;           /* aub-600 hover */
   --accent-foreground: 43 41% 92%;
 
-  --destructive: 9 53% 54%;       /* danger #C9624A */
+  --destructive: 9 53% 54%;        /* danger #C9624A — unchanged */
   --destructive-foreground: 43 41% 95%;
 
-  --input: 230 16% 12%;
-  --ring: 38 47% 60%;
+  --input: 271 30% 13%;
+  --ring: 329 88% 56%;             /* magenta focus ring */
 
   --chart-1: 38 47% 60%;
   --chart-2: 41 65% 71%;

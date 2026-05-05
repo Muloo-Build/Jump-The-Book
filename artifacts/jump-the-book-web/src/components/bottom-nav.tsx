@@ -66,7 +66,7 @@ export default function BottomNav() {
                 )}
                 aria-current={active ? "page" : undefined}
               >
-                <Icon className={cn("w-5 h-5", active && "drop-shadow-[0_0_6px_rgba(201,169,106,0.4)]")} aria-hidden />
+                <Icon className={cn("w-5 h-5", active && "drop-shadow-[0_0_6px_rgba(242,42,140,0.5)]")} aria-hidden />
                 <span className="leading-none">{item.label}</span>
               </Link>
             </li>
