@@ -1,32 +1,94 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Sparkles, BookOpen, ImageIcon, ShieldCheck, ArrowRight } from "lucide-react";
+import {
+  Sparkles,
+  BookOpen,
+  ImageIcon,
+  ShieldCheck,
+  ArrowRight,
+  Play,
+} from "lucide-react";
 
 /**
  * Signed-out landing screen.
  *
  * Goals (per product brief):
- *   1. Open the demo without gating — the primary CTA is "Try the demo"
- *      which deep-links straight into /experience/alice (a public-domain
- *      book that already ships with pre-baked scene art, so the visitor
- *      sees the product in motion within one tap and zero accounts).
+ *   1. Open the demo without gating — and let the visitor *choose* which
+ *      book to step into. We surface all four public-domain demo books
+ *      (Alice, Dracula, Frankenstein, Sherlock) as clickable cards using
+ *      their first scene art as a thumbnail. Each card deep-links to
+ *      /experience/{id}?chapter=1, which the experience page already
+ *      handles for signed-out visitors via the DEMO_BOOKS fallback.
  *   2. Get straight to the point: Jump the Book is a reading companion
  *      that paints what you're reading, scene-by-scene, spoiler-free.
  *   3. Shout out the image generation: an example gallery of cinematic
  *      scenes for popular contemporary titles (Dungeon Crawler Carl,
  *      Project Hail Mary, The Way of Kings, Mistborn) so visitors can
- *      see the quality before they commit.
+ *      see the quality bar before they commit.
  *
  * Sign-in/sign-up still live in the header for returning users, but the
- * primary action is the demo, not account creation.
+ * primary action is the demo picker, not account creation.
  */
+
+interface DemoBook {
+  /** Matches DEMO_BOOKS[].id so /experience/:id resolves correctly. */
+  id: string;
+  title: string;
+  author: string;
+  /** One-line tease, shown under the title. Spoiler-free. */
+  hook: string;
+  /** Path under /public — first scene of chapter 1 for that book. */
+  thumbnail: string;
+  /** Loading background until the image paints. */
+  gradient: string;
+  /** Display tag in the corner, e.g. "Fantasy". */
+  badge: string;
+}
+
+const DEMOS: DemoBook[] = [
+  {
+    id: "alice",
+    title: "Alice in Wonderland",
+    author: "Lewis Carroll",
+    hook: "Down the rabbit hole, in six painted scenes.",
+    thumbnail: "scenes/alice-ch1-s3.png",
+    gradient: "linear-gradient(135deg, #1a0a3a, #3a1a6a, #8b5cf6)",
+    badge: "Whimsical",
+  },
+  {
+    id: "dracula",
+    title: "Dracula",
+    author: "Bram Stoker",
+    hook: "A coach into the Carpathians. Nobody comes back.",
+    thumbnail: "scenes/dracula-ch1-s2.png",
+    gradient: "linear-gradient(135deg, #1a0a0a, #3a0a0a, #8b0000)",
+    badge: "Gothic",
+  },
+  {
+    id: "frankenstein",
+    title: "Frankenstein",
+    author: "Mary Shelley",
+    hook: "A storm. A laboratory. Something opens its eyes.",
+    thumbnail: "scenes/frank-ch1-s2.png",
+    gradient: "linear-gradient(135deg, #0a1a0a, #1a3a1a, #2a6a2a)",
+    badge: "Horror",
+  },
+  {
+    id: "sherlock",
+    title: "Sherlock Holmes",
+    author: "Arthur Conan Doyle",
+    hook: "Baker Street, gaslight, and a client in disguise.",
+    thumbnail: "scenes/sherlock-ch1-s1.png",
+    gradient: "linear-gradient(135deg, #1a1208, #3a2808, #c9974a)",
+    badge: "Mystery",
+  },
+];
 
 interface Showcase {
   src: string;
   title: string;
   author: string;
   caption: string;
-  /** Background gradient shown while the image is still loading. */
   gradient: string;
 }
 
@@ -134,14 +196,14 @@ export default function Home() {
               the room you're standing in.
             </p>
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2">
-              <Link
-                href="/experience/alice?chapter=1"
+              <a
+                href="#try-demo"
                 className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[var(--jtb-accent-hi)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_24px_rgba(201,169,106,0.28)]"
                 data-testid="link-try-demo"
               >
-                Try the demo
+                Pick a demo
                 <ArrowRight className="w-4 h-4" />
-              </Link>
+              </a>
               <Link
                 href="/sign-up"
                 className="inline-flex items-center justify-center h-12 px-6 rounded-[10px] bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-sm hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
@@ -150,9 +212,8 @@ export default function Home() {
               </Link>
             </div>
             <p className="text-xs text-muted-foreground/70 pt-1">
-              No account needed for the demo. Six pre-painted scenes from
-              Chapter 1 of <em>Alice in Wonderland</em> — straight in, no
-              email.
+              No account needed. Four classic books are pre-painted and ready
+              to step into — pick one below.
             </p>
           </motion.div>
 
@@ -191,23 +252,96 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Showcase gallery ──────────────────────────────────────────────── */}
-      <section className="relative border-t border-border/40 bg-[hsl(232,17%,5%)]">
+      {/* ── Try-a-demo picker ─────────────────────────────────────────────── */}
+      <section
+        id="try-demo"
+        className="relative border-t border-border/40 bg-[hsl(232,17%,5%)] scroll-mt-16"
+      >
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
+          <div className="space-y-3 max-w-2xl">
+            <div className="inline-flex items-center gap-2 jtb-eyebrow">
+              <Play className="w-3.5 h-3.5 text-primary" />
+              <span>Step into a book — no account needed</span>
+            </div>
+            <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
+              Pick a demo and see for yourself.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Four classics, fully painted. Tap any cover to drop straight
+              into the cinematic reader. Use the arrow keys, or the chevrons
+              on screen, to step through the scenes.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            {DEMOS.map((demo, i) => (
+              <motion.div
+                key={demo.id}
+                initial={{ opacity: 0, y: 16 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-60px" }}
+                transition={{ duration: 0.45, delay: i * 0.05, ease: "easeOut" }}
+              >
+                <Link
+                  href={`/experience/${demo.id}?chapter=1`}
+                  data-testid={`link-demo-${demo.id}`}
+                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 hover:ring-primary/50 transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-18px_rgba(201,169,106,0.45)]"
+                  style={{ background: demo.gradient }}
+                  aria-label={`Try the ${demo.title} demo`}
+                >
+                  <div className="aspect-[3/4] sm:aspect-[4/5] overflow-hidden">
+                    <img
+                      src={`${BASE}${demo.thumbnail}`}
+                      alt=""
+                      aria-hidden="true"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-[1.04]"
+                      loading="lazy"
+                    />
+                  </div>
+                  {/* Top badge */}
+                  <span className="absolute top-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/55 backdrop-blur text-white/90 border border-white/10">
+                    {demo.badge}
+                  </span>
+                  {/* Bottom info overlay */}
+                  <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
+                    <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
+                      {demo.author}
+                    </p>
+                    <p className="font-serif text-base sm:text-lg leading-tight text-white">
+                      {demo.title}
+                    </p>
+                    <p className="text-xs text-white/70 mt-1 leading-snug line-clamp-2">
+                      {demo.hook}
+                    </p>
+                    <span className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+                      Step in
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
+                  </div>
+                </Link>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Showcase gallery (capability proof for popular titles) ───────── */}
+      <section className="relative border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-10">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 jtb-eyebrow">
               <Sparkles className="w-3.5 h-3.5 text-primary" />
-              <span>Cinematic scenes, made for the chapter you're on</span>
+              <span>Built for the books you actually read</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
-              Built to make modern fiction feel like a film.
+              Made to make modern fiction feel like a film.
             </h2>
             <p className="text-muted-foreground leading-relaxed">
-              Every scene is generated from the chapter you're actually
-              reading, in the visual style you pick — comic, watercolour,
-              dark cinematic, manga, painterly fantasy, animated storybook.
-              Characters stay consistent across chapters so a face you saw
-              on page 40 still looks like the same person on page 400.
+              Drop in the chapter you're on, in the visual style you pick —
+              comic, watercolour, dark cinematic, manga, painterly fantasy,
+              animated storybook. Characters stay consistent across chapters
+              so a face you saw on page 40 still looks like the same person
+              on page 400.
             </p>
           </div>
 
@@ -283,19 +417,19 @@ export default function Home() {
             See your next chapter.
           </h2>
           <p className="text-muted-foreground max-w-xl mx-auto">
-            The fastest way to feel it is to see it. Open the demo — no
-            account, no email, six scenes already painted, three taps from
-            here.
+            The fastest way to feel it is to see it. Pick a demo above, no
+            account, no email — or start your own shelf and bring your own
+            books.
           </p>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-2">
-            <Link
-              href="/experience/alice?chapter=1"
+            <a
+              href="#try-demo"
               className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[var(--jtb-accent-hi)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_24px_rgba(201,169,106,0.28)]"
               data-testid="link-try-demo-bottom"
             >
-              Try the demo
+              Pick a demo
               <ArrowRight className="w-4 h-4" />
-            </Link>
+            </a>
             <Link
               href="/sign-up"
               className="inline-flex items-center justify-center h-12 px-6 rounded-[10px] bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-sm hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
