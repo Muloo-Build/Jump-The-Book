@@ -10,6 +10,89 @@ import {
 } from "lucide-react";
 
 /**
+ * Geometric bunny-hop motif. A dotted parabolic arc with a tiny block-built
+ * bunny silhouette at the apex, matching the brand mark's rectangular ears
+ * + circular head grammar. Used as a between-section divider, under the H1,
+ * and as a quiet personality accent throughout the page.
+ *
+ * The arc is drawn as 9 circles whose radius peaks at the apex and tapers
+ * out at both ends, suggesting motion without animating (animation is
+ * available via the `animate` prop for spots that warrant attention).
+ *
+ * Colour comes from --jtb-spark (magenta) so this is also the place the
+ * new secondary accent lives most visibly.
+ */
+function BunnyHop({
+  width = 280,
+  className = "",
+  animate = false,
+  ariaHidden = true,
+}: {
+  width?: number;
+  className?: string;
+  animate?: boolean;
+  ariaHidden?: boolean;
+}) {
+  // 9 dots traced along a parabola y = -4*(x-0.5)^2 + 1, scaled.
+  const dots = Array.from({ length: 9 }, (_, i) => {
+    const t = i / 8;
+    const x = t;
+    const y = 1 - 4 * (t - 0.5) * (t - 0.5); // 0 → 1 → 0
+    // Radius grows toward the apex so the trail "lifts".
+    const r = 1.2 + y * 2.4;
+    // Opacity tapers at the ends so the trail fades in/out.
+    const o = 0.35 + y * 0.6;
+    return { x, y, r, o };
+  });
+  const W = 100;
+  const H = 34;
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width={width}
+      height={(width * H) / W}
+      className={className}
+      aria-hidden={ariaHidden}
+      role={ariaHidden ? undefined : "img"}
+      preserveAspectRatio="xMidYMid meet"
+    >
+      {/* Trailing dotted hop arc */}
+      <g fill="var(--jtb-spark)">
+        {dots.slice(0, 8).map((d, i) => (
+          <circle
+            key={i}
+            cx={d.x * W}
+            cy={H - 6 - d.y * (H - 12)}
+            r={d.r}
+            opacity={d.o}
+          >
+            {animate && (
+              <animate
+                attributeName="opacity"
+                values={`${d.o};${Math.min(1, d.o + 0.3)};${d.o}`}
+                dur="2.4s"
+                begin={`${i * 0.12}s`}
+                repeatCount="indefinite"
+              />
+            )}
+          </circle>
+        ))}
+      </g>
+      {/* Bunny silhouette at the apex — geometric, matches the brand mark */}
+      <g transform={`translate(${dots[8].x * W - 6}, ${H - 6 - dots[8].y * (H - 12) - 14})`}>
+        {/* Ears — two slim rounded rectangles, slightly splayed */}
+        <rect x="0.6" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(-12 1.8 4.5)" />
+        <rect x="9" y="0" width="2.4" height="9" rx="1.2" fill="var(--jtb-gold-200, #E6C885)" transform="rotate(12 10.2 4.5)" />
+        {/* Head — a small circle */}
+        <circle cx="6" cy="11" r="4.4" fill="var(--jtb-gold-200, #E6C885)" />
+        {/* Eye — single dark dot */}
+        <circle cx="4.6" cy="10.6" r="0.55" fill="#08080B" />
+      </g>
+    </svg>
+  );
+}
+
+/**
  * Signed-out landing screen.
  *
  * Goals (per product brief):
@@ -182,13 +265,19 @@ export default function Home() {
             className="space-y-6 sm:space-y-7"
           >
             <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary" />
+              <span
+                className="h-1.5 w-1.5 rounded-full"
+                style={{ background: "var(--jtb-spark)" }}
+              />
               <span>The reading companion that paints what you read</span>
             </div>
             <h1 className="font-serif tracking-[-0.025em] leading-[0.98] text-foreground text-[44px] sm:text-[64px] lg:text-[76px]">
               Visualise any book.{" "}
               <em className="not-italic italic text-primary">Any chapter.</em>
             </h1>
+            {/* Animated bunny hop trail under the H1 — quiet personality
+                accent and the first appearance of the magenta spark colour. */}
+            <BunnyHop width={220} animate className="-mt-1 -ml-1 opacity-90" />
             <p className="text-muted-foreground text-base sm:text-lg max-w-[560px] leading-relaxed">
               Jump the Book turns the chapter you're on into spoiler-safe,
               cinematic scene art — so the world stops being a wall of text and
@@ -260,7 +349,10 @@ export default function Home() {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-8">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <Play className="w-3.5 h-3.5 text-primary" />
+              <Play
+                className="w-3.5 h-3.5"
+                style={{ color: "var(--jtb-spark)" }}
+              />
               <span>Step into a book — no account needed</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
@@ -285,8 +377,19 @@ export default function Home() {
                 <Link
                   href={`/experience/${demo.id}?chapter=1`}
                   data-testid={`link-demo-${demo.id}`}
-                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 hover:ring-primary/50 transition-all hover:-translate-y-0.5 hover:shadow-[0_18px_50px_-18px_rgba(201,169,106,0.45)]"
-                  style={{ background: demo.gradient }}
+                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 transition-all hover:-translate-y-0.5"
+                  style={{
+                    background: demo.gradient,
+                    // Hover state: magenta glow ring + lift, in addition to
+                    // the translate above. Inline so it can use the spark var.
+                    ["--hover-ring" as string]: "var(--jtb-glow-spark)",
+                  }}
+                  onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                    e.currentTarget.style.boxShadow = "var(--jtb-glow-spark)";
+                  }}
+                  onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
+                    e.currentTarget.style.boxShadow = "";
+                  }}
                   aria-label={`Try the ${demo.title} demo`}
                 >
                   <div className="aspect-[3/4] sm:aspect-[4/5] overflow-hidden">
@@ -298,8 +401,14 @@ export default function Home() {
                       loading="lazy"
                     />
                   </div>
-                  {/* Top badge */}
-                  <span className="absolute top-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/55 backdrop-blur text-white/90 border border-white/10">
+                  {/* Top badge — magenta spark border + text */}
+                  <span
+                    className="absolute top-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/65 backdrop-blur"
+                    style={{
+                      color: "var(--jtb-spark-hi)",
+                      border: "1px solid var(--jtb-spark-soft)",
+                    }}
+                  >
                     {demo.badge}
                   </span>
                   {/* Bottom info overlay */}
@@ -325,12 +434,21 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Hop divider — geometric magenta arc carrying the bunny from the
+          picker section into the showcase. */}
+      <div className="relative flex justify-center -my-3 z-10 pointer-events-none">
+        <BunnyHop width={180} className="opacity-80" />
+      </div>
+
       {/* ── Showcase gallery (capability proof for popular titles) ───────── */}
       <section className="relative border-t border-border/40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-20 space-y-10">
           <div className="space-y-3 max-w-2xl">
             <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <Sparkles className="w-3.5 h-3.5 text-primary" />
+              <Sparkles
+                className="w-3.5 h-3.5"
+                style={{ color: "var(--jtb-spark)" }}
+              />
               <span>Built for the books you actually read</span>
             </div>
             <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
@@ -413,6 +531,10 @@ export default function Home() {
       {/* ── Closing CTA ───────────────────────────────────────────────────── */}
       <section className="relative border-t border-border/40 bg-gradient-to-b from-transparent to-[hsl(232,17%,6%)]">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 py-14 sm:py-20 text-center space-y-6">
+          {/* Big animated hop arc as the final personality beat before the CTA. */}
+          <div className="flex justify-center">
+            <BunnyHop width={240} animate className="opacity-95" />
+          </div>
           <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
             See your next chapter.
           </h2>
