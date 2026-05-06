@@ -23,6 +23,8 @@ import {
   Headphones,
   Tablet,
   CheckCheck,
+  MessageSquareText,
+  Library,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -160,70 +162,111 @@ const DEMOS: DemoBook[] = [
 
 interface Showcase {
   src: string;
+  coverSrc: string;
   title: string;
   author: string;
   caption: string;
   gradient: string;
+  proof: string;
 }
 
 const SHOWCASE: Showcase[] = [
   {
     src: "scenes/landing/dcc.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/0593820248-L.jpg",
     title: "Dungeon Crawler Carl",
     author: "Matt Dinniman",
     caption: "Floor 1, the stairs down.",
     gradient: "linear-gradient(135deg, #1a0a1f, #4a0a3a, #8a1f6a)",
+    proof: "Title recognised, cover matched, chapter scene painted.",
   },
   {
     src: "scenes/landing/phm.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg",
     title: "Project Hail Mary",
     author: "Andy Weir",
     caption: "First contact, in the dark.",
     gradient: "linear-gradient(135deg, #06121f, #0a2440, #2a4a7a)",
+    proof: "Reader, scene history, and resume point stay together.",
   },
   {
     src: "scenes/landing/fourthwing.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9781649374042-L.jpg",
     title: "Fourth Wing",
     author: "Rebecca Yarros",
     caption: "On the parapet at Basgiath.",
     gradient: "linear-gradient(135deg, #0a0612, #2a0a3a, #4a1a6a)",
+    proof: "Same book identity from setup to painted chapter.",
   },
   {
     src: "scenes/landing/stormlight.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9780765365279-L.jpg",
     title: "The Way of Kings",
     author: "Brandon Sanderson",
     caption: "A highstorm on the Shattered Plains.",
     gradient: "linear-gradient(135deg, #0a0a1a, #1a1a3a, #3a3a7a)",
+    proof: "Works for giant series too, not just one-off scenes.",
   },
   {
     src: "scenes/landing/acotar.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9781619634442-L.jpg",
     title: "A Court of Thorns and Roses",
     author: "Sarah J. Maas",
     caption: "The Spring Court, by moonlight.",
     gradient: "linear-gradient(135deg, #0a1a0e, #1a3a2a, #4a6a4a)",
+    proof: "Save it to your shelf, then keep painting as you read.",
   },
   {
     src: "scenes/landing/dune.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9780441172719-L.jpg",
     title: "Dune",
     author: "Frank Herbert",
     caption: "A worm crests the dune.",
     gradient: "linear-gradient(135deg, #1a0a04, #4a1a08, #8a4a1a)",
+    proof: "Recognised even when you start from metadata first.",
   },
   {
     src: "scenes/landing/mistborn.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9780765311788-L.jpg",
     title: "Mistborn: The Final Empire",
     author: "Brandon Sanderson",
     caption: "Mist over Luthadel.",
     gradient: "linear-gradient(135deg, #1a0a08, #3a0a08, #6a1a18)",
+    proof: "Formats, progress, and scenes all stay attached to the title.",
   },
   {
     src: "scenes/landing/nameofthewind.png",
+    coverSrc: "https://covers.openlibrary.org/b/isbn/9780756404741-L.jpg",
     title: "The Name of the Wind",
     author: "Patrick Rothfuss",
     caption: "Silence at the Waystone Inn.",
     gradient: "linear-gradient(135deg, #0a0608, #2a1408, #4a2a18)",
+    proof: "Search the title, pick the book, paint the exact chapter.",
   },
 ];
+
+const STORY_FEATURES = [
+  {
+    icon: <ShieldCheck className="w-5 h-5" />,
+    title: "Spoiler-safe chapter paint",
+    body: "The scene is locked to where you are in the book, so the app can stay cinematic without jumping ahead.",
+  },
+  {
+    icon: <BookOpen className="w-5 h-5" />,
+    title: "Built-in reader that resumes",
+    body: "EPUBs reopen where you left off, and the scene button stays right there while you read.",
+  },
+  {
+    icon: <MessageSquareText className="w-5 h-5" />,
+    title: "Rate and review when you're done",
+    body: "Finished a book? Leave a star rating, keep it private, or share it to Trending when it's worth showing off.",
+  },
+  {
+    icon: <Library className="w-5 h-5" />,
+    title: "Shelf, formats, and imports",
+    body: "Paperback, ebook, audiobook, imported shelf, recognized title, painted scenes. It all lands in one library.",
+  },
+] as const;
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -548,12 +591,11 @@ function ShowcaseCarousel() {
             Recognise any of these?
           </h2>
           <p className="text-muted-foreground leading-relaxed">
-            Real scenes from books people are reading right now — Sanderson,
-            Yarros, Maas, Weir, Rothfuss, Herbert, and more. Drop in your
-            EPUB and we'll do the same for the chapter you're on, in the
-            visual style you pick. Characters stay consistent across
-            chapters so a face you saw on page 40 still looks like the same
-            person on page 400.
+            Real scenes from books people are reading right now, paired with
+            the actual recognised title and cover. Drop in your EPUB or search
+            for the book, and we carry that identity all the way through:
+            recognised title, matched cover, chapter scene, reader resume
+            point, bookshelf entry, and review when you finish.
           </p>
         </div>
         <div className="hidden md:flex items-center gap-2 shrink-0">
@@ -607,15 +649,33 @@ function ShowcaseCarousel() {
                   loading="lazy"
                 />
               </div>
+              <div className="absolute inset-x-0 top-0 p-4 flex items-start justify-between gap-3">
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--jtb-spark-hi)] backdrop-blur">
+                  <Sparkles className="w-3 h-3" />
+                  Recognised title
+                </div>
+                <div className="relative w-16 sm:w-[72px] shrink-0">
+                  <div className="absolute inset-0 rounded-[14px] bg-black/45 blur-md scale-95" />
+                  <img
+                    src={item.coverSrc}
+                    alt={`Cover of ${item.title}`}
+                    className="relative aspect-[2/3] w-full rounded-[14px] object-cover ring-1 ring-white/15 shadow-[0_18px_36px_rgba(0,0,0,0.45)]"
+                    loading="lazy"
+                  />
+                </div>
+              </div>
               <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black via-black/80 to-transparent">
-                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold mb-1">
+                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold mb-1 pr-20 sm:pr-24">
                   {item.author}
                 </p>
-                <p className="font-serif text-lg sm:text-xl text-white leading-tight mb-1">
+                <p className="font-serif text-lg sm:text-xl text-white leading-tight mb-1 pr-20 sm:pr-24">
                   {item.title}
                 </p>
                 <p className="text-sm text-white/70 line-clamp-2">
                   {item.caption}
+                </p>
+                <p className="mt-3 text-[11px] sm:text-xs text-white/80 max-w-[30rem]">
+                  {item.proof}
                 </p>
               </div>
             </div>
@@ -829,25 +889,33 @@ export default function Home() {
         </div>
       </section>
 
-      {/* ── Three-up: spoiler-safe / styles / context ─────────────────────── */}
+      {/* ── Story features under scenes ───────────────────────────────────── */}
       <section className="relative py-16 sm:py-24 bg-gradient-to-b from-[hsl(271,45%,6%)] to-background">
         <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="grid sm:grid-cols-3 gap-8 sm:gap-12">
-            <Feature
-              icon={<ShieldCheck className="w-6 h-6" />}
-              title="Spoiler-safe by default"
-              body="Tell us the chapter you're on. We'll never paint anything that hasn't happened yet — no betrayals, no twists, no dying characters before their time."
-            />
-            <Feature
-              icon={<ImageIcon className="w-6 h-6" />}
-              title="Six visual styles"
-              body="Comic, watercolour, dark cinematic, manga, painterly fantasy, animated storybook. Pick a vibe per book and the whole library inherits the look."
-            />
-            <Feature
-              icon={<BookOpen className="w-6 h-6" />}
-              title="Drop in EPUB or just the title"
-              body="Upload your EPUB for chapter-perfect scenes, or sign in and let the open-library lookup ground the art in real characters and places — even without the file."
-            />
+          <div className="max-w-3xl mx-auto text-center space-y-4 mb-10 sm:mb-12">
+            <div className="inline-flex items-center gap-2 jtb-eyebrow">
+              <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--jtb-spark)" }} />
+              <span>What happens after the scene matters too</span>
+            </div>
+            <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
+              More than a one-off pretty image.
+            </h2>
+            <p className="text-muted-foreground leading-relaxed">
+              The scene is the hook. The product is everything wrapped around it:
+              recognised books, reader resume, organised formats, and reactions
+              worth coming back to.
+            </p>
+          </div>
+          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
+            {STORY_FEATURES.map((feature, index) => (
+              <Feature
+                key={feature.title}
+                icon={feature.icon}
+                title={feature.title}
+                body={feature.body}
+                delay={index * 0.05}
+              />
+            ))}
           </div>
         </div>
       </section>
@@ -1215,24 +1283,26 @@ function Feature({
   icon,
   title,
   body,
+  delay = 0,
 }: {
   icon: React.ReactNode;
   title: string;
   body: string;
+  delay?: number;
 }) {
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-40px" }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-4"
+      transition={{ duration: 0.5, delay, ease: "easeOut" }}
+      className="h-full rounded-2xl border border-border/50 bg-[rgba(255,255,255,0.03)] p-5 sm:p-6 space-y-4 shadow-[0_12px_40px_rgba(0,0,0,0.16)]"
     >
       <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-[0_0_20px_rgba(242,42,140,0.15)]">
         {icon}
       </div>
-      <h3 className="font-serif text-2xl tracking-tight text-foreground">{title}</h3>
-      <p className="text-base text-muted-foreground leading-relaxed">{body}</p>
+      <h3 className="font-serif text-xl sm:text-2xl tracking-tight text-foreground">{title}</h3>
+      <p className="text-sm sm:text-base text-muted-foreground leading-relaxed">{body}</p>
     </motion.div>
   );
 }
