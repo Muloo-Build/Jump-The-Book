@@ -282,12 +282,12 @@ function findLooseShowcaseMatch(value: string): Showcase | null {
   for (const item of SHOWCASE) {
     const title = normalizeBookTitle(item.title);
     const author = normalizeBookTitle(item.author);
-    const titleDistance = levenshteinDistance(target, title);
-    const authorDistance = levenshteinDistance(target, author);
-    const prefixHit = title.includes(target) || target.includes(title);
-    const score = prefixHit
-      ? 0
-      : Math.min(titleDistance, authorDistance + 2);
+    const prefixHit =
+      title.includes(target) ||
+      target.includes(title) ||
+      author.includes(target);
+    const titleDistance = levenshteinDistance(target, canonicalBookTitle(item.title));
+    const score = prefixHit ? 0 : titleDistance;
     if (!best || score < best.score) {
       best = { item, score };
     }
@@ -295,6 +295,51 @@ function findLooseShowcaseMatch(value: string): Showcase | null {
   if (!best) return null;
   const limit = Math.max(3, Math.floor(target.length * 0.28));
   return best.score <= limit ? best.item : null;
+}
+
+function showcaseToSearchResult(item: Showcase): BookSearchResult {
+  return {
+    key: `showcase-${canonicalBookTitle(item.title).replace(/\s+/g, "-")}`,
+    workKey: `showcase-${canonicalBookTitle(item.title).replace(/\s+/g, "-")}`,
+    title: item.title,
+    author: item.author,
+    firstPublishYear: null,
+    pageCount: null,
+    coverUrl: item.coverSrc,
+    coverUrlLarge: item.coverSrc,
+    source: "open-library",
+    description: item.proof,
+    isbn: null,
+  };
+}
+
+function searchShowcase(query: string): BookSearchResult[] {
+  const target = normalizeBookTitle(query);
+  if (target.length < 3) return [];
+  const ranked = SHOWCASE.map((item) => {
+    const title = normalizeBookTitle(item.title);
+    const author = normalizeBookTitle(item.author);
+    const directHit = title.includes(target) || author.includes(target);
+    const tokenHit = target
+      .split(" ")
+      .filter((token) => token.length >= 3)
+      .some((token) => title.includes(token) || author.includes(token));
+    let score = Number.POSITIVE_INFINITY;
+    if (directHit) {
+      score = 0;
+    } else if (tokenHit) {
+      score = 1;
+    } else {
+      const distance = levenshteinDistance(target, canonicalBookTitle(item.title));
+      const limit = Math.max(2, Math.floor(target.length * 0.22));
+      if (distance <= limit) score = 2 + distance;
+    }
+    return { item, score };
+  })
+    .filter((entry) => Number.isFinite(entry.score))
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5);
+  return ranked.map((entry) => showcaseToSearchResult(entry.item));
 }
 
 type TryPreview =
@@ -740,7 +785,7 @@ function ShowcaseCarousel() {
   );
 }
 
-function TryNowSection() {
+function TryNowSection({ className }: { className?: string }) {
   const [draftQuery, setDraftQuery] = useState("Project Hail Mary");
   const [query, setQuery] = useState("Project Hail Mary");
   const [momentPrompt, setMomentPrompt] = useState("");
@@ -754,7 +799,15 @@ function TryNowSection() {
   const [guestLimitReached, setGuestLimitReached] = useState(false);
   const [guestError, setGuestError] = useState<string | null>(null);
   const resultsQ = useBookSearch(query);
-  const results = resultsQ.data ?? [];
+  const showcaseResults = searchShowcase(query);
+  const results = [...showcaseResults, ...(resultsQ.data ?? [])].filter(
+    (result, index, arr) =>
+      arr.findIndex(
+        (candidate) =>
+          `${candidate.title.toLowerCase()}|||${candidate.author.toLowerCase()}` ===
+          `${result.title.toLowerCase()}|||${result.author.toLowerCase()}`,
+      ) === index,
+  );
   const isSearching = resultsQ.isLoading || resultsQ.isFetching;
 
   useEffect(() => {
@@ -780,7 +833,9 @@ function TryNowSection() {
     setDidSubmit(true);
     setSelectedKey(null);
     setQuery(next);
+    const localResults = searchShowcase(next);
     const localMatch = findLooseShowcaseMatch(next);
+    if (localResults[0]) setSelectedKey(localResults[0].key);
     if (localMatch) setPreview({ kind: "recognized", item: localMatch });
   };
 
@@ -789,6 +844,8 @@ function TryNowSection() {
     setQuery(title);
     setDidSubmit(true);
     setSelectedKey(null);
+    const localResults = searchShowcase(title);
+    if (localResults[0]) setSelectedKey(localResults[0].key);
     const match = findShowcaseMatch(title);
     if (match) setPreview({ kind: "recognized", item: match });
   };
@@ -852,7 +909,10 @@ function TryNowSection() {
   return (
     <div
       id="try-now"
-      className="rounded-[28px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5 shadow-[0_18px_60px_rgba(0,0,0,0.2)] text-left"
+      className={cn(
+        "rounded-[28px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5 shadow-[0_18px_60px_rgba(0,0,0,0.2)] text-left",
+        className,
+      )}
     >
       <div className="space-y-4">
         <div className="flex items-center gap-2 jtb-eyebrow text-primary">
@@ -1017,8 +1077,9 @@ function TryNowSection() {
 
         {didSubmit && query.trim().length >= 3 && results.length === 0 && !isSearching && (
           <div className="rounded-2xl border border-dashed border-border/50 px-4 py-4 text-sm text-muted-foreground">
-            No public catalog hit yet. Try the author’s surname or one of the
-            quick picks.
+            {resultsQ.isError
+              ? "The public catalog is having a moment. Try one of the quick picks while we fall back gracefully."
+              : "No public catalog hit yet. Try the author’s surname or one of the quick picks."}
           </div>
         )}
 
@@ -1185,12 +1246,12 @@ export default function Home() {
         {/* Soft background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_top,rgba(242,42,140,0.15),transparent_70%)] pointer-events-none -z-10" />
         
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_auto] gap-12 lg:gap-20 items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_320px] gap-12 lg:gap-16 items-start">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="space-y-6 lg:max-w-[620px] text-center lg:text-left z-10"
+            className="space-y-6 lg:max-w-[720px] text-center lg:text-left z-10"
           >
             <div className="inline-flex items-center justify-center lg:justify-start gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
               <Sparkles className="w-3.5 h-3.5" />
@@ -1207,29 +1268,7 @@ export default function Home() {
               on. We paint the scene — like a movie still, made just for that
               moment. Spoiler-free. Nothing from later in the book leaks in.
             </p>
-            <div className="rounded-[24px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-3 sm:p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <a
-                  href="#try-now"
-                  className="flex-1 inline-flex items-center gap-3 h-12 rounded-[16px] border border-border/60 bg-background/60 px-4 text-sm text-muted-foreground hover:border-primary/40 transition-colors"
-                >
-                  <Search className="w-4 h-4 shrink-0" />
-                  <span className="truncate">Search a book title or author</span>
-                </a>
-                <a
-                  href="#try-now"
-                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
-                  data-testid="link-try-now"
-                >
-                  <Sparkles className="w-4 h-4" />
-                  Try one free scene
-                </a>
-              </div>
-              <p className="text-xs text-muted-foreground/75 pt-3 text-center lg:text-left">
-                Search below, preview instantly if we recognise it, or generate
-                one real guest scene before signup.
-              </p>
-            </div>
+            <TryNowSection />
             <p className="text-xs text-muted-foreground/70 pt-1">
               Use it in your browser today on desktop or mobile. App Store
               and Google Play builds are coming soon.
@@ -1240,34 +1279,10 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut", delay: 0.1 }}
-            className="relative mx-auto lg:mx-0 z-10"
+            className="relative mx-auto lg:mx-0 z-10 pt-2"
           >
             <PhoneWalkthrough />
           </motion.div>
-        </div>
-      </section>
-
-      <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-background via-[hsl(271,45%,7%)] to-[hsl(271,45%,6%)]">
-        <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[0.92fr_1.08fr] items-start">
-          <div className="space-y-4 max-w-2xl">
-            <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-              <Search className="w-3.5 h-3.5" />
-              <span>Try it now</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.08]">
-              Search a book. Preview instantly. Generate one real scene.
-            </h2>
-            <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-2xl">
-              Recognised titles load a ready-to-go sample immediately. If we
-              don’t already have it in the preview library, you still get one
-              real guest scene in the browser before signup.
-            </p>
-            <p className="text-sm text-muted-foreground/80">
-              After that first scene, signup unlocks your shelf, reader,
-              reviews, and chapter-by-chapter painting.
-            </p>
-          </div>
-          <TryNowSection />
         </div>
       </section>
 

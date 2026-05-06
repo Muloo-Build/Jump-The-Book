@@ -352,6 +352,7 @@ export function useBookSearch(query: string) {
   return useQuery({
     queryKey: ["books-search", query],
     enabled: query.trim().length >= 3,
+    retry: false,
     queryFn: async () => {
       const r = await apiFetch<{ results: BookSearchResult[] }>(
         `/books/search?q=${encodeURIComponent(query.trim())}`,
