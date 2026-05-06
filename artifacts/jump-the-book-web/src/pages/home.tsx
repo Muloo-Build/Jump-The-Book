@@ -948,15 +948,6 @@ function TryNowSection() {
             />
 
             <div className="flex flex-col sm:flex-row gap-3">
-              {preview.kind === "recognized" && (
-                <button
-                  type="button"
-                  onClick={() => setPreview({ kind: "recognized", item: preview.item })}
-                  className="inline-flex items-center justify-center h-11 px-5 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
-                >
-                  Load instant preview
-                </button>
-              )}
               <button
                 type="button"
                 onClick={generateGuestScene}
@@ -974,23 +965,53 @@ function TryNowSection() {
                   "Generate 1 free real scene"
                 )}
               </button>
+              <a
+                href="#section-bookshelf"
+                className="inline-flex items-center justify-center h-11 px-5 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
+              >
+                See how it fits together
+              </a>
             </div>
           </div>
         )}
 
-        {!selectedSearchResult && query.trim().length >= 3 && results.length > 0 && (
+        {query.trim().length >= 3 && results.length > 0 && (
           <div className="space-y-2">
-            {results.slice(0, 3).map((result) => (
-              <button
-                key={result.key}
-                type="button"
-                onClick={() => handleResultSelect(result)}
-                className="w-full rounded-2xl border border-border/40 bg-background/30 p-3 text-left hover:border-primary/30 transition-colors"
-              >
-                <p className="font-serif text-base text-foreground">{result.title}</p>
-                <p className="text-xs text-muted-foreground">{result.author}</p>
-              </button>
-            ))}
+            {results.slice(0, 5).map((result) => {
+              const match = findShowcaseMatch(result);
+              const active =
+                selectedSearchResult?.key === result.key ||
+                (preview.kind === "recognized" && match?.title === preview.item.title);
+              return (
+                <button
+                  key={result.key}
+                  type="button"
+                  onClick={() => handleResultSelect(result)}
+                  className={cn(
+                    "w-full rounded-2xl border p-3 text-left transition-colors",
+                    active
+                      ? "border-primary/50 bg-primary/10"
+                      : "border-border/40 bg-background/30 hover:border-primary/30",
+                  )}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-serif text-base text-foreground line-clamp-1">
+                        {result.title}
+                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {result.author}
+                      </p>
+                    </div>
+                    {match ? (
+                      <span className="shrink-0 inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                        Ready
+                      </span>
+                    ) : null}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -1004,48 +1025,100 @@ function TryNowSection() {
         {(preview.kind === "recognized" || preview.kind === "guest") && (
           <div className="rounded-[24px] overflow-hidden ring-1 ring-border/40 bg-[hsl(271,32%,8%)] shadow-[0_18px_50px_rgba(0,0,0,0.26)]">
             {preview.kind === "recognized" ? (
-              <div className="relative min-h-[280px]" style={{ background: preview.item.gradient }}>
-                <img
-                  src={`${BASE}${preview.item.src}`}
-                  alt={`Painted preview from ${preview.item.title}`}
-                  className="absolute inset-0 h-full w-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                <div className="absolute top-4 right-4 w-20 rounded-[14px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_18px_35px_rgba(0,0,0,0.42)]">
-                  <img src={preview.item.coverSrc} alt={`Cover of ${preview.item.title}`} className="w-full aspect-[2/3] object-cover" loading="lazy" />
-                </div>
-                <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
-                    Instant preview
+              <div className="grid md:grid-cols-[168px_1fr] min-h-[320px]">
+                <div className="p-4 sm:p-5 border-b md:border-b-0 md:border-r border-white/10 bg-[rgba(0,0,0,0.24)] flex flex-col justify-between gap-4">
+                  <div className="space-y-3">
+                    <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                      Recognised
+                    </div>
+                    <div className="w-24 sm:w-28 rounded-[16px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_22px_40px_rgba(0,0,0,0.42)]">
+                      <img src={preview.item.coverSrc} alt={`Cover of ${preview.item.title}`} className="w-full aspect-[2/3] object-cover" loading="lazy" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                        {preview.item.author}
+                      </p>
+                      <p className="font-serif text-xl text-white leading-tight">
+                        {preview.item.title}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-white/75">
+                    Cover recognised. Sample scene ready before signup.
                   </p>
-                  <p className="font-serif text-2xl text-white">{preview.item.title}</p>
-                  <p className="text-sm text-white/75">{preview.item.caption}</p>
+                </div>
+                <div className="relative" style={{ background: preview.item.gradient }}>
+                  <img
+                    src={`${BASE}${preview.item.src}`}
+                    alt={`Painted preview from ${preview.item.title}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                      Instant preview
+                    </p>
+                    <p className="font-serif text-2xl text-white">{preview.item.caption}</p>
+                    <p className="text-sm text-white/75">{preview.item.proof}</p>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="relative min-h-[280px] bg-[radial-gradient(circle_at_top,rgba(216,27,122,0.16),transparent_50%),linear-gradient(180deg,hsl(271,35%,10%),hsl(271,40%,7%))]">
-                {preview.scene.imageUrl ? (
-                  <img
-                    src={preview.scene.imageUrl}
-                    alt={`Guest preview scene from ${preview.result.title}`}
-                    className="absolute inset-0 h-full w-full object-cover"
-                  />
-                ) : null}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/15" />
-                <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
-                    Your one free scene
+              <div className="grid md:grid-cols-[168px_1fr] min-h-[320px] bg-[radial-gradient(circle_at_top,rgba(216,27,122,0.16),transparent_50%),linear-gradient(180deg,hsl(271,35%,10%),hsl(271,40%,7%))]">
+                <div className="p-4 sm:p-5 border-b md:border-b-0 md:border-r border-white/10 bg-[rgba(0,0,0,0.24)] flex flex-col justify-between gap-4">
+                  <div className="space-y-3">
+                    <div className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                      Free guest scene
+                    </div>
+                    <div className="w-24 sm:w-28 rounded-[16px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/45 shadow-[0_18px_35px_rgba(0,0,0,0.35)]">
+                      {preview.result.coverUrl ? (
+                        <img
+                          src={preview.result.coverUrlLarge ?? preview.result.coverUrl}
+                          alt={`Cover of ${preview.result.title}`}
+                          className="w-full aspect-[2/3] object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="w-full aspect-[2/3] bg-gradient-to-br from-[hsl(271,24%,18%)] to-[hsl(271,28%,28%)]" />
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                        {preview.result.author}
+                      </p>
+                      <p className="font-serif text-xl text-white leading-tight">
+                        {preview.result.title}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-xs text-white/75">
+                    Real scene generated in-browser. Sign up to keep painting.
                   </p>
-                  <p className="font-serif text-2xl text-white">{preview.scene.title}</p>
-                  <p className="text-sm text-white/80">{preview.scene.summary}</p>
-                  <div className="pt-2">
-                    <Link
-                      href="/sign-up"
-                      className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter]"
-                    >
-                      Sign up for more scenes
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
+                </div>
+                <div className="relative">
+                  {preview.scene.imageUrl ? (
+                    <img
+                      src={preview.scene.imageUrl}
+                      alt={`Guest preview scene from ${preview.result.title}`}
+                      className="absolute inset-0 h-full w-full object-cover"
+                    />
+                  ) : null}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/15" />
+                  <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
+                    <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                      Your one free scene
+                    </p>
+                    <p className="font-serif text-2xl text-white">{preview.scene.title}</p>
+                    <p className="text-sm text-white/80">{preview.scene.summary}</p>
+                    <div className="pt-2">
+                      <Link
+                        href="/sign-up"
+                        className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter]"
+                      >
+                        Sign up for more scenes
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1093,7 +1166,7 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/sign-in"
-              className="hidden sm:inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="hidden sm:inline-flex h-9 items-center rounded-md px-4 text-sm font-medium text-muted-foreground border border-border/40 bg-[rgba(255,255,255,0.03)] hover:text-foreground hover:bg-[rgba(255,255,255,0.06)] transition-colors"
             >
               Sign in
             </Link>
@@ -1112,12 +1185,12 @@ export default function Home() {
         {/* Soft background glow */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-[radial-gradient(ellipse_at_top,rgba(242,42,140,0.15),transparent_70%)] pointer-events-none -z-10" />
         
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[1fr_auto] gap-12 lg:gap-20 items-center">
+        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,1fr)_auto] gap-12 lg:gap-20 items-center">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="space-y-6 lg:max-w-[680px] text-center lg:text-left z-10"
+            className="space-y-6 lg:max-w-[620px] text-center lg:text-left z-10"
           >
             <div className="inline-flex items-center justify-center lg:justify-start gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
               <Sparkles className="w-3.5 h-3.5" />
@@ -1134,30 +1207,33 @@ export default function Home() {
               on. We paint the scene — like a movie still, made just for that
               moment. Spoiler-free. Nothing from later in the book leaks in.
             </p>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center lg:justify-start gap-3 pt-4">
-              <Link
-                href="/sign-up"
-                className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
-                data-testid="link-paint-my-book"
-              >
-                <Upload className="w-4 h-4" />
-                Paint a scene from my book
-              </Link>
-              <a
-                href="#try-now"
-                className="inline-flex items-center justify-center h-12 px-6 rounded-[10px] bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-sm hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
-                data-testid="link-try-now"
-              >
-                Try it now
-              </a>
+            <div className="rounded-[24px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-3 sm:p-4 shadow-[0_18px_50px_rgba(0,0,0,0.18)]">
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a
+                  href="#try-now"
+                  className="flex-1 inline-flex items-center gap-3 h-12 rounded-[16px] border border-border/60 bg-background/60 px-4 text-sm text-muted-foreground hover:border-primary/40 transition-colors"
+                >
+                  <Search className="w-4 h-4 shrink-0" />
+                  <span className="truncate">Search a book title or author</span>
+                </a>
+                <a
+                  href="#try-now"
+                  className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
+                  data-testid="link-try-now"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Try one free scene
+                </a>
+              </div>
+              <p className="text-xs text-muted-foreground/75 pt-3 text-center lg:text-left">
+                Search below, preview instantly if we recognise it, or generate
+                one real guest scene before signup.
+              </p>
             </div>
             <p className="text-xs text-muted-foreground/70 pt-1">
               Use it in your browser today on desktop or mobile. App Store
               and Google Play builds are coming soon.
             </p>
-            <div className="pt-2">
-              <TryNowSection />
-            </div>
           </motion.div>
 
           <motion.div
@@ -1168,6 +1244,30 @@ export default function Home() {
           >
             <PhoneWalkthrough />
           </motion.div>
+        </div>
+      </section>
+
+      <section className="relative py-16 sm:py-20 px-4 sm:px-6 bg-gradient-to-b from-background via-[hsl(271,45%,7%)] to-[hsl(271,45%,6%)]">
+        <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[0.92fr_1.08fr] items-start">
+          <div className="space-y-4 max-w-2xl">
+            <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+              <Search className="w-3.5 h-3.5" />
+              <span>Try it now</span>
+            </div>
+            <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.08]">
+              Search a book. Preview instantly. Generate one real scene.
+            </h2>
+            <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-2xl">
+              Recognised titles load a ready-to-go sample immediately. If we
+              don’t already have it in the preview library, you still get one
+              real guest scene in the browser before signup.
+            </p>
+            <p className="text-sm text-muted-foreground/80">
+              After that first scene, signup unlocks your shelf, reader,
+              reviews, and chapter-by-chapter painting.
+            </p>
+          </div>
+          <TryNowSection />
         </div>
       </section>
 
@@ -1187,9 +1287,9 @@ export default function Home() {
             See your next chapter.
           </h2>
           <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-            The fastest way to get it is to see it. Drop in your EPUB and
-            paint the chapter you're on — or step into a classic with no
-            signup at all.
+            Search a title, preview instantly if we know it, or generate one
+            free real scene in your browser. Then sign up to keep going
+            chapter by chapter.
           </p>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 pt-6">
             <Link
@@ -1489,11 +1589,6 @@ function BookshelfShowcase() {
                 title="Search the whole shelf"
                 body="Title, author, series — type three letters and your library narrows. Works across Reading, Want to read and Finished at once."
               />
-              <ShelfFeatureBullet
-                icon={<BookOpen className="w-4 h-4" />}
-                title="Picks up where you left off"
-                body="Now Reading shows progress, the latest scene you painted, and a Continue button that drops you back into chapter and verse."
-              />
             </ul>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 justify-center lg:justify-start">
@@ -1575,13 +1670,19 @@ function DesktopWorkspaceMock() {
                   className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
-                <div className="absolute top-4 right-4 w-24 rounded-[16px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_20px_45px_rgba(0,0,0,0.42)]">
-                  <img
-                    src="https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg"
-                    alt="Project Hail Mary cover"
-                    className="w-full aspect-[2/3] object-cover"
-                    loading="lazy"
-                  />
+                <div className="absolute top-4 right-4 flex flex-col items-end gap-2">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--jtb-spark-hi)] backdrop-blur">
+                    <Sparkles className="w-3 h-3" />
+                    Recognised book
+                  </div>
+                  <div className="w-28 rounded-[16px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_20px_45px_rgba(0,0,0,0.42)]">
+                    <img
+                      src="https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg"
+                      alt="Project Hail Mary cover"
+                      className="w-full aspect-[2/3] object-cover"
+                      loading="lazy"
+                    />
+                  </div>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
                   <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
@@ -1666,8 +1767,8 @@ function CrossDeviceShowcase() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
-          {STORY_FEATURES.map((feature, index) => (
+        <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
+          {STORY_FEATURES.slice(0, 2).map((feature, index) => (
             <Feature
               key={feature.title}
               icon={feature.icon}
