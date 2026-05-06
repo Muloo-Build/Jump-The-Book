@@ -8,12 +8,15 @@ import {
 } from "@workspace/db/schema";
 import {
   DEFAULT_BOOK_FORMAT,
+  searchGoogleBooks,
   isBookFormat,
 } from "@workspace/jump-the-book-shared";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
+import { ObjectStorageService } from "../lib/objectStorage";
 
 const router: IRouter = Router();
+const objectStorage = new ObjectStorageService();
 
 router.use(requireAuth);
 
@@ -389,7 +392,9 @@ function serializeBook(b: typeof userBooksTable.$inferSelect) {
     userNote: b.userNote,
     tagline: b.tagline,
     heroImage: b.heroImage,
+    epubObjectKey: b.epubObjectKey,
     coverUrl: b.coverUrl,
+    lastReadCfi: b.lastReadCfi,
     totalChapters: b.totalChapters,
     readingStatus: b.readingStatus,
     seriesName: b.seriesName,
@@ -448,6 +453,22 @@ async function resolveCoverUrlFromOpenLibrary(
   }
 }
 
+async function resolveCoverUrlWithFallback(
+  title: string,
+  author: string,
+): Promise<string | null> {
+  const openLibrary = await resolveCoverUrlFromOpenLibrary(title, author);
+  if (openLibrary) return openLibrary;
+  const googleKey = process.env.GOOGLE_BOOKS_API_KEY;
+  if (!googleKey) return null;
+  try {
+    const results = await searchGoogleBooks(`${title} ${author}`.trim(), googleKey);
+    return results[0]?.coverUrlLarge ?? results[0]?.coverUrl ?? null;
+  } catch {
+    return null;
+  }
+}
+
 function scheduleCoverResolve(
   bookId: string,
   userId: string,
@@ -460,7 +481,7 @@ function scheduleCoverResolve(
   // Fire-and-forget — never await, never block the request response.
   void (async () => {
     try {
-      const coverUrl = await resolveCoverUrlFromOpenLibrary(title, author);
+      const coverUrl = await resolveCoverUrlWithFallback(title, author);
       if (!coverUrl) return;
       await db
         .update(userBooksTable)
@@ -709,6 +730,8 @@ interface PostBookBody {
   tagline?: string | null;
   heroImage?: string | null;
   coverUrl?: string | null;
+  epubObjectKey?: string | null;
+  lastReadCfi?: string | null;
   totalChapters?: number | null;
   readingStatus?: string;
   seriesName?: string | null;
@@ -807,6 +830,12 @@ router.post("/me/books", async (req, res) => {
       ) {
         patch.coverUrl = body.coverUrl.trim();
       }
+      if (body.epubObjectKey && !existing.epubObjectKey) {
+        patch.epubObjectKey = body.epubObjectKey.trim();
+      }
+      if (body.lastReadCfi && body.lastReadCfi !== existing.lastReadCfi) {
+        patch.lastReadCfi = body.lastReadCfi;
+      }
       if (body.coverGradient && body.coverGradient.length > 0) patch.coverGradient = body.coverGradient;
       if (body.totalChapters != null && body.totalChapters !== existing.totalChapters) patch.totalChapters = body.totalChapters;
       if (
@@ -863,7 +892,9 @@ router.post("/me/books", async (req, res) => {
         userNote: body.userNote ?? "",
         tagline: body.tagline ?? null,
         heroImage: body.heroImage ?? null,
+        epubObjectKey: body.epubObjectKey ?? null,
         coverUrl: initialCoverUrl,
+        lastReadCfi: body.lastReadCfi ?? null,
         totalChapters: body.totalChapters ?? null,
         readingStatus: body.readingStatus && READING_STATUSES.has(body.readingStatus) ? body.readingStatus : "reading",
         seriesName: body.seriesName ?? null,
@@ -976,7 +1007,9 @@ router.patch("/me/books/:id", async (req, res) => {
       "totalChapters",
       "tagline",
       "heroImage",
+      "epubObjectKey",
       "coverUrl",
+      "lastReadCfi",
       "coverGradient",
       "readingStatus",
       "seriesName",
@@ -1008,6 +1041,100 @@ router.patch("/me/books/:id", async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "PATCH /me/books/:id failed");
     res.status(500).json({ error: "Failed to update book" });
+  }
+});
+
+interface ImportFileBody {
+  title?: unknown;
+  author?: unknown;
+  fileName?: unknown;
+  fileBase64?: unknown;
+  format?: unknown;
+  visualStyle?: unknown;
+  spoilerMode?: unknown;
+  currentChapter?: unknown;
+  totalChapters?: unknown;
+}
+
+router.post("/me/books/import-file", async (req, res) => {
+  try {
+    const userId = (req as AuthedRequest).userId;
+    const body = (req.body ?? {}) as ImportFileBody;
+    const title = typeof body.title === "string" ? body.title.trim() : "";
+    const author = typeof body.author === "string" ? body.author.trim() : "";
+    const format = typeof body.format === "string" ? body.format : DEFAULT_BOOK_FORMAT;
+    const fileName = typeof body.fileName === "string" ? body.fileName.trim() : "book.epub";
+    const fileBase64 = typeof body.fileBase64 === "string" ? body.fileBase64 : "";
+    const currentChapter =
+      typeof body.currentChapter === "number" && Number.isFinite(body.currentChapter)
+        ? Math.max(1, Math.round(body.currentChapter))
+        : 1;
+    const totalChapters =
+      typeof body.totalChapters === "number" && Number.isFinite(body.totalChapters)
+        ? Math.max(1, Math.round(body.totalChapters))
+        : null;
+    if (!title || !author || !fileBase64) {
+      res.status(400).json({ error: "title, author, and fileBase64 are required" });
+      return;
+    }
+    const payload = fileBase64.includes(",") ? fileBase64.split(",")[1] ?? "" : fileBase64;
+    const buffer = Buffer.from(payload, "base64");
+    const objectPath = await objectStorage.uploadBufferAsObjectEntity(
+      buffer,
+      "application/epub+zip",
+      "epubs",
+    );
+    const [created] = await db
+      .insert(userBooksTable)
+      .values({
+        userId,
+        title,
+        author,
+        format: isBookFormat(format) ? format : DEFAULT_BOOK_FORMAT,
+        source: "upload",
+        coverGradient: [],
+        visualStyle:
+          typeof body.visualStyle === "string" ? body.visualStyle : "fantasy-illustration",
+        spoilerMode:
+          typeof body.spoilerMode === "string" ? body.spoilerMode : "no-spoilers",
+        currentChapter,
+        currentPage: 0,
+        currentAudioTimestamp: "00:00:00",
+        progress: 0,
+        userNote: `Imported from file: ${fileName}`,
+        epubObjectKey: objectPath,
+        totalChapters,
+        readingStatus: "reading",
+      })
+      .returning();
+    res.status(201).json({ book: serializeBook(created) });
+  } catch (err) {
+    req.log.error({ err }, "POST /me/books/import-file failed");
+    res.status(500).json({ error: "Failed to import file" });
+  }
+});
+
+router.get("/me/books/:id/epub-url", async (req, res) => {
+  try {
+    const [book] = await db
+      .select()
+      .from(userBooksTable)
+      .where(
+        and(
+          eq(userBooksTable.id, req.params.id),
+          eq(userBooksTable.userId, (req as unknown as AuthedRequest).userId),
+        ),
+      )
+      .limit(1);
+    if (!book || !book.epubObjectKey) {
+      res.status(404).json({ error: "EPUB not found" });
+      return;
+    }
+    const url = await objectStorage.getSignedObjectEntityUrl(book.epubObjectKey);
+    res.json({ url });
+  } catch (err) {
+    req.log.error({ err }, "GET /me/books/:id/epub-url failed");
+    res.status(500).json({ error: "Failed to load EPUB URL" });
   }
 });
 

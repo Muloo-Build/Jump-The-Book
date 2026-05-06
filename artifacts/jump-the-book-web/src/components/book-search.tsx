@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { Search, Loader2, BookOpen } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { searchOpenLibrary, type OpenLibrarySearchResult } from "@/lib/openLibrary";
 import { useLibrary } from "@/lib/library";
+import { useBookSearch, type BookSearchResult } from "@/hooks/useApiLibrary";
 
 const GRADIENTS: string[][] = [
   ["#1a1525", "#2d2440", "#453560"],
@@ -26,45 +26,12 @@ export default function BookSearch() {
   const { addBook, settings } = useLibrary();
   const { toast } = useToast();
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<OpenLibrarySearchResult[]>([]);
-  const [searching, setSearching] = useState(false);
   const [savingKey, setSavingKey] = useState<string | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
+  const resultsQ = useBookSearch(query);
+  const results = resultsQ.data ?? [];
+  const searching = resultsQ.isLoading || resultsQ.isFetching;
 
-  useEffect(() => {
-    if (!query.trim() || query.trim().length < 3) {
-      setResults([]);
-      setSearching(false);
-      return;
-    }
-    abortRef.current?.abort();
-    const controller = new AbortController();
-    abortRef.current = controller;
-    setSearching(true);
-    const timeout = setTimeout(async () => {
-      try {
-        const r = await searchOpenLibrary(query, controller.signal);
-        if (!controller.signal.aborted) {
-          setResults(r);
-          setSearching(false);
-        }
-      } catch (err) {
-        if (controller.signal.aborted) return;
-        setSearching(false);
-        toast({
-          title: "Search failed",
-          description: "Couldn't reach Open Library. Try again in a moment.",
-          variant: "destructive",
-        });
-      }
-    }, 350);
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [query, toast]);
-
-  const handleAdd = async (r: OpenLibrarySearchResult) => {
+  const handleAdd = async (r: BookSearchResult) => {
     setSavingKey(r.key);
     try {
       const newId = await addBook({

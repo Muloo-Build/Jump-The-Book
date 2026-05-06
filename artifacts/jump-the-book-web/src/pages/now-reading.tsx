@@ -42,7 +42,10 @@ function NowReadingCard({ book, latestScene, sceneCount }: NowReadingCardProps) 
   const gradFrom = gradient[0] ?? "#1a1525";
   const gradTo = gradient[1] ?? gradient[0] ?? "#453560";
   const heroImage = latestScene?.imageUrl || cover;
-  const resumeHref = `/experience/${book.id}?chapter=${chapter}`;
+  const resumeHref =
+    book.epubObjectKey && book.lastReadCfi
+      ? `/read/${book.remoteId ?? book.id}`
+      : `/experience/${book.id}?chapter=${chapter}`;
 
   return (
     <motion.div

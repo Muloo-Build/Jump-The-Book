@@ -12,4 +12,23 @@ export interface Book {
   title: string;
   author: string;
   format: BookFormat;
+  source?: string;
+  demoBookId?: string | null;
+  coverGradient?: string[];
+  visualStyle?: string;
+  spoilerMode?: string;
+  currentChapter?: number;
+  currentPage?: number;
+  currentAudioTimestamp?: string;
+  progress?: number;
+  userNote?: string;
+  tagline?: string | null;
+  heroImage?: string | null;
+  epubObjectKey?: string | null;
+  coverUrl?: string | null;
+  lastReadCfi?: string | null;
+  totalChapters?: number | null;
+  readingStatus?: string;
+  seriesName?: string | null;
+  seriesOrder?: number | null;
 }

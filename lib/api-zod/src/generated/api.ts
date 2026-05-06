@@ -14,3 +14,112 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+export const SearchBooksQueryParams = zod.object({
+  q: zod.coerce.string(),
+});
+
+export const SearchBooksResponse = zod.object({
+  results: zod.array(
+    zod.object({
+      key: zod.string(),
+      title: zod.string(),
+      author: zod.string(),
+      firstPublishYear: zod.number().nullish(),
+      pageCount: zod.number().nullish(),
+      coverUrl: zod.string().nullish(),
+      coverUrlLarge: zod.string().nullish(),
+      workKey: zod.string(),
+      source: zod.string().nullish(),
+      description: zod.string().nullish(),
+      isbn: zod.string().nullish(),
+    }),
+  ),
+});
+
+export const GetTrendingReviewsResponse = zod.object({
+  reviews: zod.array(
+    zod
+      .object({
+        id: zod.string().uuid(),
+        userId: zod.string(),
+        userBookId: zod.string().uuid(),
+        rating: zod.number(),
+        body: zod.string().nullish(),
+        containsSpoilers: zod.boolean(),
+        shareToTrending: zod.boolean(),
+        createdAt: zod.coerce.date(),
+        updatedAt: zod.coerce.date(),
+      })
+      .and(
+        zod.object({
+          bookTitle: zod.string(),
+          author: zod.string(),
+          authorHandle: zod.string(),
+        }),
+      ),
+  ),
+});
+
+export const GetBookEpubUrlParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetBookEpubUrlResponse = zod.object({
+  url: zod.string(),
+});
+
+export const GetMyBookReviewParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetMyBookReviewResponse = zod.object({
+  review: zod.object({
+    id: zod.string().uuid(),
+    userId: zod.string(),
+    userBookId: zod.string().uuid(),
+    rating: zod.number(),
+    body: zod.string().nullish(),
+    containsSpoilers: zod.boolean(),
+    shareToTrending: zod.boolean(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+export const UpsertMyBookReviewParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpsertMyBookReviewResponse = zod.object({
+  review: zod.object({
+    id: zod.string().uuid(),
+    userId: zod.string(),
+    userBookId: zod.string().uuid(),
+    rating: zod.number(),
+    body: zod.string().nullish(),
+    containsSpoilers: zod.boolean(),
+    shareToTrending: zod.boolean(),
+    createdAt: zod.coerce.date(),
+    updatedAt: zod.coerce.date(),
+  }),
+});
+
+export const DeleteMyBookReviewParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetHardcoverIntegrationResponse = zod.object({
+  connected: zod.boolean(),
+});
+
+export const ConnectHardcoverResponse = zod.object({
+  connected: zod.boolean(),
+  previewCount: zod.number(),
+});
+
+export const ImportHardcoverLibraryResponse = zod.object({
+  imported: zod.number(),
+  updated: zod.number(),
+  total: zod.number(),
+});

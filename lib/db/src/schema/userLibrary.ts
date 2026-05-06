@@ -88,10 +88,12 @@ export const userBooksTable = pgTable(
     userNote: text("user_note").notNull().default(""),
     tagline: text("tagline"),
     heroImage: text("hero_image"),
+    epubObjectKey: text("epub_object_key"),
     // Resolved Open Library cover URL (or any other CDN URL). Persisted so
     // we never re-hit OL for the same book — first request that resolves a
     // cover writes it here and every subsequent read uses it.
     coverUrl: text("cover_url"),
+    lastReadCfi: text("last_read_cfi"),
     totalChapters: integer("total_chapters"),
     readingStatus: text("reading_status").notNull().default("reading"),
     seriesName: text("series_name"),

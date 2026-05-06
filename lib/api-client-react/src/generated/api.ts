@@ -5,15 +5,30 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import type {
+  MutationFunction,
   QueryFunction,
   QueryKey,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult,
 } from "@tanstack/react-query";
 
-import type { HealthStatus } from "./api.schemas";
+import type {
+  ConnectHardcover200,
+  GetBookEpubUrl200,
+  GetHardcoverIntegration200,
+  GetMyBookReview200,
+  GetTrendingReviews200,
+  HealthStatus,
+  ImportBookFile201,
+  ImportHardcoverLibrary200,
+  SearchBooks200,
+  SearchBooksParams,
+  UpsertMyBookReview200,
+} from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
 import type { ErrorType } from "../custom-fetch";
@@ -99,3 +114,849 @@ export function useHealthCheck<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+export const getSearchBooksUrl = (params: SearchBooksParams) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/books/search?${stringifiedParams}`
+    : `/api/books/search`;
+};
+
+export const searchBooks = async (
+  params: SearchBooksParams,
+  options?: RequestInit,
+): Promise<SearchBooks200> => {
+  return customFetch<SearchBooks200>(getSearchBooksUrl(params), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getSearchBooksQueryKey = (params?: SearchBooksParams) => {
+  return [`/api/books/search`, ...(params ? [params] : [])] as const;
+};
+
+export const getSearchBooksQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchBooks>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchBooksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchBooks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getSearchBooksQueryKey(params);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof searchBooks>>> = ({
+    signal,
+  }) => searchBooks(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchBooks>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchBooksQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchBooks>>
+>;
+export type SearchBooksQueryError = ErrorType<unknown>;
+
+export function useSearchBooks<
+  TData = Awaited<ReturnType<typeof searchBooks>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchBooksParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchBooks>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchBooksQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetTrendingReviewsUrl = () => {
+  return `/api/trending/reviews`;
+};
+
+export const getTrendingReviews = async (
+  options?: RequestInit,
+): Promise<GetTrendingReviews200> => {
+  return customFetch<GetTrendingReviews200>(getGetTrendingReviewsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetTrendingReviewsQueryKey = () => {
+  return [`/api/trending/reviews`] as const;
+};
+
+export const getGetTrendingReviewsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getTrendingReviews>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTrendingReviews>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetTrendingReviewsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getTrendingReviews>>
+  > = ({ signal }) => getTrendingReviews({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getTrendingReviews>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetTrendingReviewsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getTrendingReviews>>
+>;
+export type GetTrendingReviewsQueryError = ErrorType<unknown>;
+
+export function useGetTrendingReviews<
+  TData = Awaited<ReturnType<typeof getTrendingReviews>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getTrendingReviews>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetTrendingReviewsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getImportBookFileUrl = () => {
+  return `/api/me/books/import-file`;
+};
+
+export const importBookFile = async (
+  options?: RequestInit,
+): Promise<ImportBookFile201> => {
+  return customFetch<ImportBookFile201>(getImportBookFileUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getImportBookFileMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importBookFile>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importBookFile>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["importBookFile"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importBookFile>>,
+    void
+  > = () => {
+    return importBookFile(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportBookFileMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importBookFile>>
+>;
+
+export type ImportBookFileMutationError = ErrorType<unknown>;
+
+export const useImportBookFile = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importBookFile>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importBookFile>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getImportBookFileMutationOptions(options));
+};
+
+export const getGetBookEpubUrlUrl = (id: string) => {
+  return `/api/me/books/${id}/epub-url`;
+};
+
+export const getBookEpubUrl = async (
+  id: string,
+  options?: RequestInit,
+): Promise<GetBookEpubUrl200> => {
+  return customFetch<GetBookEpubUrl200>(getGetBookEpubUrlUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetBookEpubUrlQueryKey = (id: string) => {
+  return [`/api/me/books/${id}/epub-url`] as const;
+};
+
+export const getGetBookEpubUrlQueryOptions = <
+  TData = Awaited<ReturnType<typeof getBookEpubUrl>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBookEpubUrl>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetBookEpubUrlQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getBookEpubUrl>>> = ({
+    signal,
+  }) => getBookEpubUrl(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getBookEpubUrl>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetBookEpubUrlQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getBookEpubUrl>>
+>;
+export type GetBookEpubUrlQueryError = ErrorType<unknown>;
+
+export function useGetBookEpubUrl<
+  TData = Awaited<ReturnType<typeof getBookEpubUrl>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getBookEpubUrl>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetBookEpubUrlQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getGetMyBookReviewUrl = (id: string) => {
+  return `/api/me/books/${id}/review`;
+};
+
+export const getMyBookReview = async (
+  id: string,
+  options?: RequestInit,
+): Promise<GetMyBookReview200> => {
+  return customFetch<GetMyBookReview200>(getGetMyBookReviewUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyBookReviewQueryKey = (id: string) => {
+  return [`/api/me/books/${id}/review`] as const;
+};
+
+export const getGetMyBookReviewQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyBookReview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyBookReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyBookReviewQueryKey(id);
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getMyBookReview>>> = ({
+    signal,
+  }) => getMyBookReview(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyBookReview>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyBookReviewQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyBookReview>>
+>;
+export type GetMyBookReviewQueryError = ErrorType<unknown>;
+
+export function useGetMyBookReview<
+  TData = Awaited<ReturnType<typeof getMyBookReview>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getMyBookReview>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyBookReviewQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getUpsertMyBookReviewUrl = (id: string) => {
+  return `/api/me/books/${id}/review`;
+};
+
+export const upsertMyBookReview = async (
+  id: string,
+  options?: RequestInit,
+): Promise<UpsertMyBookReview200> => {
+  return customFetch<UpsertMyBookReview200>(getUpsertMyBookReviewUrl(id), {
+    ...options,
+    method: "PUT",
+  });
+};
+
+export const getUpsertMyBookReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertMyBookReview>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof upsertMyBookReview>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["upsertMyBookReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof upsertMyBookReview>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return upsertMyBookReview(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpsertMyBookReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof upsertMyBookReview>>
+>;
+
+export type UpsertMyBookReviewMutationError = ErrorType<unknown>;
+
+export const useUpsertMyBookReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof upsertMyBookReview>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof upsertMyBookReview>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getUpsertMyBookReviewMutationOptions(options));
+};
+
+export const getDeleteMyBookReviewUrl = (id: string) => {
+  return `/api/me/books/${id}/review`;
+};
+
+export const deleteMyBookReview = async (
+  id: string,
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDeleteMyBookReviewUrl(id), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDeleteMyBookReviewMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMyBookReview>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof deleteMyBookReview>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  const mutationKey = ["deleteMyBookReview"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof deleteMyBookReview>>,
+    { id: string }
+  > = (props) => {
+    const { id } = props ?? {};
+
+    return deleteMyBookReview(id, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DeleteMyBookReviewMutationResult = NonNullable<
+  Awaited<ReturnType<typeof deleteMyBookReview>>
+>;
+
+export type DeleteMyBookReviewMutationError = ErrorType<unknown>;
+
+export const useDeleteMyBookReview = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof deleteMyBookReview>>,
+    TError,
+    { id: string },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof deleteMyBookReview>>,
+  TError,
+  { id: string },
+  TContext
+> => {
+  return useMutation(getDeleteMyBookReviewMutationOptions(options));
+};
+
+export const getGetHardcoverIntegrationUrl = () => {
+  return `/api/me/integrations/hardcover`;
+};
+
+export const getHardcoverIntegration = async (
+  options?: RequestInit,
+): Promise<GetHardcoverIntegration200> => {
+  return customFetch<GetHardcoverIntegration200>(
+    getGetHardcoverIntegrationUrl(),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getGetHardcoverIntegrationQueryKey = () => {
+  return [`/api/me/integrations/hardcover`] as const;
+};
+
+export const getGetHardcoverIntegrationQueryOptions = <
+  TData = Awaited<ReturnType<typeof getHardcoverIntegration>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHardcoverIntegration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetHardcoverIntegrationQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getHardcoverIntegration>>
+  > = ({ signal }) => getHardcoverIntegration({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getHardcoverIntegration>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetHardcoverIntegrationQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getHardcoverIntegration>>
+>;
+export type GetHardcoverIntegrationQueryError = ErrorType<unknown>;
+
+export function useGetHardcoverIntegration<
+  TData = Awaited<ReturnType<typeof getHardcoverIntegration>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getHardcoverIntegration>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetHardcoverIntegrationQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+export const getDisconnectHardcoverUrl = () => {
+  return `/api/me/integrations/hardcover`;
+};
+
+export const disconnectHardcover = async (
+  options?: RequestInit,
+): Promise<void> => {
+  return customFetch<void>(getDisconnectHardcoverUrl(), {
+    ...options,
+    method: "DELETE",
+  });
+};
+
+export const getDisconnectHardcoverMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectHardcover>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof disconnectHardcover>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["disconnectHardcover"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof disconnectHardcover>>,
+    void
+  > = () => {
+    return disconnectHardcover(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type DisconnectHardcoverMutationResult = NonNullable<
+  Awaited<ReturnType<typeof disconnectHardcover>>
+>;
+
+export type DisconnectHardcoverMutationError = ErrorType<unknown>;
+
+export const useDisconnectHardcover = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof disconnectHardcover>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof disconnectHardcover>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getDisconnectHardcoverMutationOptions(options));
+};
+
+export const getConnectHardcoverUrl = () => {
+  return `/api/me/integrations/hardcover/connect`;
+};
+
+export const connectHardcover = async (
+  options?: RequestInit,
+): Promise<ConnectHardcover200> => {
+  return customFetch<ConnectHardcover200>(getConnectHardcoverUrl(), {
+    ...options,
+    method: "POST",
+  });
+};
+
+export const getConnectHardcoverMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectHardcover>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof connectHardcover>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["connectHardcover"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof connectHardcover>>,
+    void
+  > = () => {
+    return connectHardcover(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ConnectHardcoverMutationResult = NonNullable<
+  Awaited<ReturnType<typeof connectHardcover>>
+>;
+
+export type ConnectHardcoverMutationError = ErrorType<unknown>;
+
+export const useConnectHardcover = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof connectHardcover>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof connectHardcover>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getConnectHardcoverMutationOptions(options));
+};
+
+export const getImportHardcoverLibraryUrl = () => {
+  return `/api/me/integrations/hardcover/import`;
+};
+
+export const importHardcoverLibrary = async (
+  options?: RequestInit,
+): Promise<ImportHardcoverLibrary200> => {
+  return customFetch<ImportHardcoverLibrary200>(
+    getImportHardcoverLibraryUrl(),
+    {
+      ...options,
+      method: "POST",
+    },
+  );
+};
+
+export const getImportHardcoverLibraryMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importHardcoverLibrary>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof importHardcoverLibrary>>,
+  TError,
+  void,
+  TContext
+> => {
+  const mutationKey = ["importHardcoverLibrary"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof importHardcoverLibrary>>,
+    void
+  > = () => {
+    return importHardcoverLibrary(requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ImportHardcoverLibraryMutationResult = NonNullable<
+  Awaited<ReturnType<typeof importHardcoverLibrary>>
+>;
+
+export type ImportHardcoverLibraryMutationError = ErrorType<unknown>;
+
+export const useImportHardcoverLibrary = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof importHardcoverLibrary>>,
+    TError,
+    void,
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof importHardcoverLibrary>>,
+  TError,
+  void,
+  TContext
+> => {
+  return useMutation(getImportHardcoverLibraryMutationOptions(options));
+};

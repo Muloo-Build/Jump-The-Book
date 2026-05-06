@@ -55,7 +55,10 @@ export default function NowReadingHero({ book, latestScene }: Props) {
   // Approx "time left" — only show if we know enough to be useful.
   const timeLeft = progress > 0 && progress < 100 ? `${100 - progress}% to go` : null;
 
-  const resumeHref = `/experience/${book.id}?chapter=${chapter}`;
+  const resumeHref =
+    book.epubObjectKey && book.lastReadCfi
+      ? `/read/${book.remoteId ?? book.id}`
+      : `/experience/${book.id}?chapter=${chapter}`;
   const allScenesHref = `/book/${book.id}#scenes`;
 
   return (

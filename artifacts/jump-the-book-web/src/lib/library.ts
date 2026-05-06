@@ -134,6 +134,8 @@ function remoteBookToItem(b: RemoteBook): UserLibraryItem & {
     tagline: b.tagline ?? undefined,
     heroImage: b.heroImage ?? undefined,
     coverUrl: b.coverUrl ?? null,
+    epubObjectKey: b.epubObjectKey ?? null,
+    lastReadCfi: b.lastReadCfi ?? null,
     remoteId: b.id,
     demoBookId: b.demoBookId,
     source: b.source,

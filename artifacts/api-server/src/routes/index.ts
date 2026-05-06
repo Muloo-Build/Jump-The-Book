@@ -9,6 +9,10 @@ import passageRouter from "./passage";
 import coverRouter from "./cover";
 import shareRouter from "./share";
 import trendingRouter from "./trending";
+import trendingReviewsRouter from "./trendingReviews";
+import reviewsRouter from "./reviews";
+import booksRouter from "./books";
+import hardcoverRouter from "./integrations/hardcover";
 
 const router: IRouter = Router();
 
@@ -24,11 +28,15 @@ router.use(healthRouter);
 router.use(shareRouter);
 router.use(storageRouter);
 router.use(trendingRouter);
+router.use(trendingReviewsRouter);
+router.use(booksRouter);
 router.use(scenesRouter);
 router.use(passageRouter);
 router.use(coverRouter);
 router.use(biblesRouter);
 router.use(companionRouter);
+router.use(reviewsRouter);
+router.use(hardcoverRouter);
 router.use(meRouter);
 
 export default router;

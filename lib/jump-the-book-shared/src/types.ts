@@ -48,9 +48,11 @@ export interface UserLibraryItem {
   sourceType?: "demo" | "user-added" | "user-writing";
   tagline?: string;
   heroImage?: string;
+  epubObjectKey?: string | null;
   // Resolved cover URL (Open Library or any CDN). When present, the tile
   // renders this directly and skips the per-browser OL lookup.
   coverUrl?: string | null;
+  lastReadCfi?: string | null;
   remoteId?: string;
   readingStatus?: "reading" | "want-to-read" | "finished";
   seriesName?: string | null;
@@ -103,7 +105,9 @@ export interface RemoteBook {
   userNote: string;
   tagline: string | null;
   heroImage: string | null;
+  epubObjectKey: string | null;
   coverUrl: string | null;
+  lastReadCfi: string | null;
   totalChapters: number | null;
   createdAt: string;
   updatedAt: string;
@@ -143,7 +147,9 @@ export interface AddBookInput {
   userNote?: string;
   tagline?: string | null;
   heroImage?: string | null;
+  epubObjectKey?: string | null;
   coverUrl?: string | null;
+  lastReadCfi?: string | null;
   totalChapters?: number | null;
 }
 
@@ -170,7 +176,9 @@ export function remoteBookToUserLibraryItem(r: RemoteBook): UserLibraryItem {
     sourceType: r.source === "demo" ? "demo" : "user-added",
     tagline: r.tagline ?? undefined,
     heroImage: r.heroImage ?? undefined,
+    epubObjectKey: r.epubObjectKey ?? null,
     coverUrl: r.coverUrl ?? null,
+    lastReadCfi: r.lastReadCfi ?? null,
     remoteId: r.id,
   };
 }

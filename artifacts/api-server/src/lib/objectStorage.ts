@@ -183,6 +183,21 @@ export class ObjectStorageService {
     return objectFile;
   }
 
+  async getSignedObjectEntityUrl(
+    objectPath: string,
+    ttlSec = 900,
+  ): Promise<string> {
+    const objectFile = await this.getObjectEntityFile(objectPath);
+    const bucket = objectFile.bucket.name;
+    const name = objectFile.name;
+    return signObjectURL({
+      bucketName: bucket,
+      objectName: name,
+      method: "GET",
+      ttlSec,
+    });
+  }
+
   normalizeObjectEntityPath(rawPath: string): string {
     if (!rawPath.startsWith("https://storage.googleapis.com/")) {
       return rawPath;

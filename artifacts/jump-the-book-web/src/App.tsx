@@ -41,8 +41,10 @@ import SetupBook from "@/pages/setup-book";
 import Playback from "@/pages/playback";
 import Discover from "@/pages/discover";
 import Account from "@/pages/account";
+import AccountIntegrations from "@/pages/account-integrations";
 import SceneShare from "@/pages/scene-share";
 import NowReading from "@/pages/now-reading";
+import ReadPage from "@/pages/read";
 import { useLibrary } from "@/lib/library";
 
 // In production the Clerk proxy runs on the current host; derive the
@@ -265,6 +267,7 @@ function ClerkProviderWithRoutes() {
                   <Onboarding />
                 </ProtectedRoute>
               </Route>
+              <Route path="/account/integrations" component={AccountIntegrations} />
               <Route path="/account/*?" component={Account} />
               <Route path="/now-reading" component={NowReading} />
               <Route path="/library" component={Library} />
@@ -275,6 +278,7 @@ function ClerkProviderWithRoutes() {
               <Route path="/book/:id" component={BookDetail} />
               <Route path="/position/:id" component={Position} />
               <Route path="/experience/:id" component={Experience} />
+              <Route path="/read/:id" component={ReadPage} />
               <Route path="/comic/:id" component={Comic} />
               <Route path="/playback/:id" component={Playback} />
               <Route path="/help" component={Help} />

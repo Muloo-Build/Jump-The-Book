@@ -128,6 +128,8 @@ export interface UserLibraryItem {
   tagline?: string;
   heroImage?: string;
   coverUrl?: string | null;
+  epubObjectKey?: string | null;
+  lastReadCfi?: string | null;
   remoteId?: string;
   readingStatus?: ReadingStatus;
   seriesName?: string | null;

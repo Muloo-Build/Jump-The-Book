@@ -21,6 +21,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import BookSearch from "@/components/book-search";
 import SnapCoverButton from "@/components/snap-cover-button";
 import { Show } from "@clerk/react";
+import { useImportBookFile } from "@/hooks/useApiLibrary";
 
 function formatFromParsedFile(kind: "EPUB" | "PDF" | "Text"): BookFormat {
   return kind === "EPUB" ? "Ebook" : DEFAULT_BOOK_FORMAT;
@@ -29,11 +30,14 @@ function formatFromParsedFile(kind: "EPUB" | "PDF" | "Text"): BookFormat {
 export default function Upload() {
   const [, setLocation] = useLocation();
   const { addBook } = useLibrary();
+  const importFile = useImportBookFile();
   const { toast } = useToast();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isParsing, setIsParsing] = useState(false);
   const [parsedData, setParsedData] = useState<{ title: string; author: string } | null>(null);
+  const [fileForImport, setFileForImport] = useState<File | null>(null);
+  const [parsedChapterCount, setParsedChapterCount] = useState<number | null>(null);
 
   const [style, setStyle] = useState<VisualStyle>("dark-cinematic");
   const [spoiler, setSpoiler] = useState<SpoilerMode>("no-spoilers");
@@ -49,6 +53,8 @@ export default function Upload() {
       const result = await parseBookFile(file);
       setParsedData({ title: result.title, author: result.author || "Unknown Author" });
       setFormat(formatFromParsedFile(result.format));
+      setFileForImport(file);
+      setParsedChapterCount(result.chapters.length);
       toast({
         title: `${result.format} parsed`,
         description: `Found ${result.chapters.length} chapter${result.chapters.length === 1 ? "" : "s"}. Ready to set up your reading experience.`,
@@ -71,22 +77,42 @@ export default function Upload() {
     if (!parsedData) return;
     setIsSaving(true);
     try {
-      const newBookId = await addBook(
-        {
+      let newBookId: string;
+      if (fileForImport && format === "Ebook") {
+        const buffer = await fileForImport.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = "";
+        for (const byte of bytes) binary += String.fromCharCode(byte);
+        const uploaded = await importFile.mutateAsync({
           title: parsedData.title,
           author: parsedData.author,
+          fileName: fileForImport.name,
+          fileBase64: `data:application/epub+zip;base64,${btoa(binary)}`,
           format,
-          currentChapter: parseInt(chapter, 10) || 1,
-          currentPage: 1,
-          currentAudioTimestamp: "00:00:00",
-          spoilerMode: spoiler,
-          userNote: "",
           visualStyle: style,
-          progress: 0,
-          coverGradient: ["#1a1525", "#2d2440", "#453560"],
-        },
-        { source: "upload" },
-      );
+          spoilerMode: spoiler,
+          currentChapter: parseInt(chapter, 10) || 1,
+          totalChapters: parsedChapterCount,
+        });
+        newBookId = uploaded.id;
+      } else {
+        newBookId = await addBook(
+          {
+            title: parsedData.title,
+            author: parsedData.author,
+            format,
+            currentChapter: parseInt(chapter, 10) || 1,
+            currentPage: 1,
+            currentAudioTimestamp: "00:00:00",
+            spoilerMode: spoiler,
+            userNote: "",
+            visualStyle: style,
+            progress: 0,
+            coverGradient: ["#1a1525", "#2d2440", "#453560"],
+          },
+          { source: "upload" },
+        );
+      }
       setLocation(`/book/${newBookId}`);
     } catch (err) {
       toast({

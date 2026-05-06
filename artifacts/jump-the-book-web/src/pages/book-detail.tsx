@@ -52,7 +52,10 @@ import {
 } from "@/hooks/useApiLibrary";
 import EditBookDialog from "@/components/edit-book-dialog";
 import BookCompanion from "@/components/book-companion";
+import ReviewCard from "@/components/review-card";
+import ReviewEditor from "@/components/review-editor";
 import { useEffect, useState } from "react";
+import { useRemoteReview } from "@/hooks/useApiLibrary";
 
 // User-book IDs from the remote API are UUIDs. Demo books use slugs ("alice").
 // Only call the bible endpoint for UUID-shaped IDs to avoid spurious 404s.
@@ -96,6 +99,8 @@ export default function BookDetail() {
       : null;
   const bibleQ = useBookBible(bibleBookId);
   const bible = bibleQ.data?.bible ?? null;
+  const reviewQ = useRemoteReview(remoteBookId ?? null);
+  const review = reviewQ.data ?? null;
 
   // Fetch scenes for this book (only when signed in and we have a remote id)
   const scenesQ = useRemoteBookScenes(remoteBookId ?? null);
@@ -658,6 +663,32 @@ export default function BookDetail() {
             )}
 
             <BookMetadata title={book.title} author={book.author} />
+
+            {isSignedIn && remoteBookId && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                className="space-y-4"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-serif text-2xl font-semibold">Your review</h3>
+                    {remoteBook?.readingStatus === "finished" && !review && (
+                      <p className="text-sm text-muted-foreground">
+                        How was it? Rate this book.
+                      </p>
+                    )}
+                  </div>
+                </div>
+                {review && <ReviewCard review={review} />}
+                <ReviewEditor
+                  bookId={remoteBookId}
+                  review={review}
+                  defaultOpen={remoteBook?.readingStatus === "finished" && !review}
+                />
+              </motion.div>
+            )}
 
             {bibleBookId && bible && (
               <motion.div

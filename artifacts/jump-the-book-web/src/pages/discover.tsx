@@ -3,11 +3,12 @@ import { Link } from "wouter";
 import { Sparkles, Upload as UploadIcon, Wand2, Compass, TrendingUp, BookOpen, Flame } from "lucide-react";
 import Layout from "@/components/layout";
 import { DEMO_BOOKS } from "@/data/books";
-import { useRemoteSceneLibrary, useRemoteBooks } from "@/hooks/useApiLibrary";
+import { useRemoteSceneLibrary, useRemoteBooks, useTrendingReviews } from "@/hooks/useApiLibrary";
 import { useLibrary } from "@/lib/library";
 import { useTrending, type TrendingBook } from "@/hooks/useTrending";
 import { useOpenLibraryEnrichment } from "@/hooks/useOpenLibraryEnrichment";
 import LibraryBookTile from "@/components/library-book-tile";
+import ReviewCard from "@/components/review-card";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -141,6 +142,7 @@ export default function Discover() {
   const remoteBooks = useRemoteBooks();
   const { isSignedIn } = useLibrary();
   const trending = useTrending();
+  const trendingReviews = useTrendingReviews();
 
   const explored = useMemo(() => {
     const liveIds = new Set((remoteBooks.data ?? []).map((b) => b.id));
@@ -249,6 +251,29 @@ export default function Discover() {
                 ))}
               </div>
             )}
+          </section>
+        )}
+
+        {(trendingReviews.data?.length ?? 0) > 0 && (
+          <section className="space-y-5">
+            <div className="border-b border-border/40 pb-2">
+              <h2 className="font-serif text-2xl font-semibold leading-tight">
+                Reader reviews
+              </h2>
+              <p className="text-xs text-muted-foreground/80 mt-1">
+                Fresh reactions from readers who chose to share
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {trendingReviews.data!.slice(0, 6).map((review) => (
+                <div key={review.id} className="space-y-2">
+                  <ReviewCard review={review} authorLabel={`@${review.authorHandle}`} />
+                  <p className="px-1 text-xs text-muted-foreground">
+                    {review.bookTitle} by {review.author}
+                  </p>
+                </div>
+              ))}
+            </div>
           </section>
         )}
 

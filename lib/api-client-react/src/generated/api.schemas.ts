@@ -22,4 +22,98 @@ export interface Book {
   title: string;
   author: string;
   format: BookFormat;
+  source?: string;
+  demoBookId?: string | null;
+  coverGradient?: string[];
+  visualStyle?: string;
+  spoilerMode?: string;
+  currentChapter?: number;
+  currentPage?: number;
+  currentAudioTimestamp?: string;
+  progress?: number;
+  userNote?: string;
+  tagline?: string | null;
+  heroImage?: string | null;
+  epubObjectKey?: string | null;
+  coverUrl?: string | null;
+  lastReadCfi?: string | null;
+  totalChapters?: number | null;
+  readingStatus?: string;
+  seriesName?: string | null;
+  seriesOrder?: number | null;
 }
+
+export interface Review {
+  id: string;
+  userId: string;
+  userBookId: string;
+  rating: number;
+  body?: string | null;
+  containsSpoilers: boolean;
+  shareToTrending: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type TrendingReview = Review & {
+  bookTitle: string;
+  author: string;
+  authorHandle: string;
+};
+
+export interface BookSearchResult {
+  key: string;
+  title: string;
+  author: string;
+  firstPublishYear?: number | null;
+  pageCount?: number | null;
+  coverUrl?: string | null;
+  coverUrlLarge?: string | null;
+  workKey: string;
+  source?: string | null;
+  description?: string | null;
+  isbn?: string | null;
+}
+
+export type SearchBooksParams = {
+  q: string;
+};
+
+export type SearchBooks200 = {
+  results: BookSearchResult[];
+};
+
+export type GetTrendingReviews200 = {
+  reviews: TrendingReview[];
+};
+
+export type ImportBookFile201 = {
+  book: Book;
+};
+
+export type GetBookEpubUrl200 = {
+  url: string;
+};
+
+export type GetMyBookReview200 = {
+  review: Review;
+};
+
+export type UpsertMyBookReview200 = {
+  review: Review;
+};
+
+export type GetHardcoverIntegration200 = {
+  connected: boolean;
+};
+
+export type ConnectHardcover200 = {
+  connected: boolean;
+  previewCount: number;
+};
+
+export type ImportHardcoverLibrary200 = {
+  imported: number;
+  updated: number;
+  total: number;
+};

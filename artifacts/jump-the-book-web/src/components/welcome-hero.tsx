@@ -68,7 +68,9 @@ export default function WelcomeHero({ nowReading, totalBooks }: Props) {
   const sub = buildSubtext(nowReading, totalBooks);
 
   const continueHref = nowReading
-    ? `/experience/${nowReading.id}?chapter=${nowReading.currentChapter ?? 1}`
+    ? nowReading.epubObjectKey && nowReading.lastReadCfi
+      ? `/read/${nowReading.remoteId ?? nowReading.id}`
+      : `/experience/${nowReading.id}?chapter=${nowReading.currentChapter ?? 1}`
     : "/library";
 
   return (

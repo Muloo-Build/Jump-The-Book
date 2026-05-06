@@ -44,7 +44,9 @@ export interface RemoteBook {
   userNote: string;
   tagline: string | null;
   heroImage: string | null;
+  epubObjectKey: string | null;
   coverUrl: string | null;
+  lastReadCfi: string | null;
   totalChapters: number | null;
   readingStatus: ReadingStatus;
   seriesName: string | null;
@@ -135,11 +137,54 @@ export interface AddBookInput {
   userNote?: string;
   tagline?: string | null;
   heroImage?: string | null;
+  epubObjectKey?: string | null;
   coverUrl?: string | null;
+  lastReadCfi?: string | null;
   totalChapters?: number | null;
   readingStatus?: ReadingStatus;
   seriesName?: string | null;
   seriesOrder?: number | null;
+}
+
+export interface RemoteReview {
+  id: string;
+  userId: string;
+  userBookId: string;
+  rating: number;
+  body: string | null;
+  containsSpoilers: boolean;
+  shareToTrending: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TrendingReview {
+  id: string;
+  userId: string;
+  rating: number;
+  body: string | null;
+  containsSpoilers: boolean;
+  shareToTrending: boolean;
+  createdAt: string;
+  updatedAt: string;
+  bookTitle: string;
+  author: string;
+  userBookId: string;
+  authorHandle: string;
+}
+
+export interface BookSearchResult {
+  key: string;
+  title: string;
+  author: string;
+  firstPublishYear: number | null;
+  pageCount: number | null;
+  coverUrl: string | null;
+  coverUrlLarge: string | null;
+  workKey: string;
+  source?: "open-library" | "google-books";
+  description?: string | null;
+  isbn?: string | null;
 }
 
 export function useAddRemoteBook() {
@@ -207,6 +252,163 @@ export function usePatchRemoteBook() {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["me", "books"] });
+    },
+  });
+}
+
+export function useRemoteReview(bookId: string | null | undefined) {
+  const enabled = useIsSignedIn() && !!bookId;
+  return useQuery({
+    queryKey: ["me", "books", bookId, "review"],
+    enabled,
+    retry: false,
+    queryFn: async () => {
+      try {
+        const r = await apiFetch<{ review: RemoteReview }>(`/me/books/${bookId}/review`);
+        return r.review;
+      } catch (err) {
+        if (err instanceof Error && err.message.includes("API 404")) return null;
+        throw err;
+      }
+    },
+  });
+}
+
+export function useUpsertRemoteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      bookId,
+      ...body
+    }: {
+      bookId: string;
+      rating: number;
+      body?: string | null;
+      containsSpoilers?: boolean;
+      shareToTrending?: boolean;
+    }) => {
+      const r = await apiFetch<{ review: RemoteReview }>(`/me/books/${bookId}/review`, {
+        method: "PUT",
+        body: JSON.stringify(body),
+      });
+      return r.review;
+    },
+    onSuccess: (review) => {
+      qc.invalidateQueries({ queryKey: ["trending-reviews"] });
+      qc.setQueryData(["me", "books", review.userBookId, "review"], review);
+    },
+  });
+}
+
+export function useDeleteRemoteReview() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (bookId: string) =>
+      apiFetch(`/me/books/${bookId}/review`, { method: "DELETE" }),
+    onSuccess: (_data, bookId) => {
+      qc.removeQueries({ queryKey: ["me", "books", bookId, "review"] });
+      qc.invalidateQueries({ queryKey: ["trending-reviews"] });
+    },
+  });
+}
+
+export function useTrendingReviews() {
+  return useQuery({
+    queryKey: ["trending-reviews"],
+    queryFn: async () => {
+      const r = await apiFetch<{ reviews: TrendingReview[] }>("/trending/reviews");
+      return r.reviews;
+    },
+  });
+}
+
+export function useImportBookFile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (body: {
+      title: string;
+      author: string;
+      fileName: string;
+      fileBase64: string;
+      format: string;
+      visualStyle: string;
+      spoilerMode: string;
+      currentChapter?: number;
+      totalChapters?: number | null;
+    }) => {
+      const r = await apiFetch<{ book: RemoteBook }>("/me/books/import-file", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+      return r.book;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me", "books"] });
+    },
+  });
+}
+
+export function useBookSearch(query: string) {
+  return useQuery({
+    queryKey: ["books-search", query],
+    enabled: query.trim().length >= 3,
+    queryFn: async () => {
+      const r = await apiFetch<{ results: BookSearchResult[] }>(
+        `/books/search?q=${encodeURIComponent(query.trim())}`,
+      );
+      return r.results;
+    },
+  });
+}
+
+export function useHardcoverIntegration() {
+  const enabled = useIsSignedIn();
+  return useQuery({
+    queryKey: ["me", "integrations", "hardcover"],
+    enabled,
+    queryFn: async () =>
+      apiFetch<{ connected: boolean }>("/me/integrations/hardcover"),
+  });
+}
+
+export function useConnectHardcover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (token: string) =>
+      apiFetch<{ connected: boolean; previewCount: number }>(
+        "/me/integrations/hardcover/connect",
+        {
+          method: "POST",
+          body: JSON.stringify({ token }),
+        },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me", "integrations", "hardcover"] });
+    },
+  });
+}
+
+export function useImportHardcover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      apiFetch<{ imported: number; updated: number; total: number }>(
+        "/me/integrations/hardcover/import",
+        { method: "POST" },
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me", "books"] });
+    },
+  });
+}
+
+export function useDisconnectHardcover() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () =>
+      apiFetch("/me/integrations/hardcover", { method: "DELETE" }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["me", "integrations", "hardcover"] });
     },
   });
 }

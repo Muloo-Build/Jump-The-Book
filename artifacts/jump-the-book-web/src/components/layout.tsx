@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { LogOut, User as UserIcon, Settings, Search } from "lucide-react";
+import { LogOut, User as UserIcon, Settings, Search, Plug } from "lucide-react";
 import { Show, useUser, useClerk } from "@clerk/react";
 import { useRemoteUser } from "@/hooks/useApiLibrary";
 import { avatarUrl } from "@/data/avatars";
@@ -97,6 +97,12 @@ function UserMenu() {
           <Link href="/account">
             <Settings className="w-4 h-4 mr-2" />
             Account &amp; preferences
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/account/integrations">
+            <Plug className="w-4 h-4 mr-2" />
+            Integrations
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

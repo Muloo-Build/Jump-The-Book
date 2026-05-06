@@ -8,4 +8,17 @@
 
 export * from "./book";
 export * from "./bookFormat";
+export * from "./bookSearchResult";
+export * from "./connectHardcover200";
+export * from "./getBookEpubUrl200";
+export * from "./getHardcoverIntegration200";
+export * from "./getMyBookReview200";
+export * from "./getTrendingReviews200";
 export * from "./healthStatus";
+export * from "./importBookFile201";
+export * from "./importHardcoverLibrary200";
+export * from "./review";
+export * from "./searchBooks200";
+export * from "./searchBooksParams";
+export * from "./trendingReview";
+export * from "./upsertMyBookReview200";

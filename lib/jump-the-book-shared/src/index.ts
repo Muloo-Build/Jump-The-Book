@@ -5,6 +5,7 @@ export {
   fetchSeriesInfo,
   clearSeriesInfoCache,
 } from "./openLibrary";
+export { searchGoogleBooks } from "./googleBooks";
 export {
   BOOK_FORMATS,
   DEFAULT_BOOK_FORMAT,
@@ -16,5 +17,6 @@ export type {
   OpenLibraryWorkDetails,
   SeriesInfo,
 } from "./openLibrary";
+export type { GoogleBooksSearchResult } from "./googleBooks";
 export type { BookFormat } from "./bookFormats";
 export * from "./types";

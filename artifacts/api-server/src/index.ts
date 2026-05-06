@@ -16,6 +16,12 @@ if (Number.isNaN(port) || port <= 0) {
   throw new Error(`Invalid PORT value: "${rawPort}"`);
 }
 
+if (!process.env.GOOGLE_BOOKS_API_KEY) {
+  logger.warn(
+    "GOOGLE_BOOKS_API_KEY is unset; Google Books fallback is disabled.",
+  );
+}
+
 app.listen(port, (err) => {
   if (err) {
     logger.error({ err }, "Error listening on port");
