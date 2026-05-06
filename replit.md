@@ -67,6 +67,11 @@ The project is built as a pnpm workspace monorepo using TypeScript.
 - **Popularity Tracking & Trending:**
     - `hit_count` and `last_accessed_at` on cache tables for popularity tracking.
     - Public trending API to showcase top books, integrated into the "Discover" page.
+- **Landing Page:**
+    - Hero with auto-cycling `PhoneWalkthrough` (pick book → pick chapter → painted scene).
+    - `ShowcaseCarousel` of pre-painted real-world books.
+    - `BookshelfShowcase` static section (mocked phone view of `/library` with status tabs, search, series pills, format tags, progress bars + 4 feature bullets) — surfaces existing library/now-reading capabilities to landing visitors.
+    - Four-classics demo grid → `/experience/:id` (no signup).
 - **Book Parsing Limits:**
     - EPUB and PDF parsers support full novels, with UI responsiveness managed through event loop yielding during EPUB parsing.
 

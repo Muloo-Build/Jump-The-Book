@@ -329,3 +329,9 @@ id = "90IwY69lqckVNu_8Xb4jn"
 uri = "file://mobile-handoff/README.md"
 type = "text"
 title = "Full Handoff Doc"
+
+[[outputs]]
+id = "hSob5vA-pkTI9kv50C3P7"
+uri = "file://JUMP_THE_BOOK_ROADMAP.md"
+type = "text"
+title = "Jump the Book — Codex handoff roadmap"

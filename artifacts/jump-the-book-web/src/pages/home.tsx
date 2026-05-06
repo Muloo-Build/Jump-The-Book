@@ -18,6 +18,11 @@ import {
   ChevronRight,
   Play,
   Upload,
+  Search,
+  Layers,
+  Headphones,
+  Tablet,
+  CheckCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -735,6 +740,9 @@ export default function Home() {
       {/* ── Showcase gallery ────────────────────────────────────────────────── */}
       <ShowcaseCarousel />
 
+      {/* ── Bookshelf, one place ───────────────────────────────────────────── */}
+      <BookshelfShowcase />
+
       {/* ── Classics demo picker ────────────────────────────────────────────── */}
       <section
         id="classics"
@@ -879,6 +887,327 @@ export default function Home() {
         Reading is for readers.
       </footer>
     </div>
+  );
+}
+
+/**
+ * BookshelfShowcase: marketing section that surfaces the existing /library and
+ * /now-reading features on the landing page so visitors understand JTB is a
+ * full reading companion, not just a one-shot scene generator.
+ *
+ * No new backend — this is a static visual mock that mirrors the real shelf UI
+ * (status tabs, search, progress bars, scene counts, format tags, series pills)
+ * paired with a feature list. Keep mock data in sync with what the real app can
+ * actually do; do not promise capabilities that aren't shipped.
+ */
+const SHELF_MOCK = [
+  {
+    title: "Project Hail Mary",
+    author: "Andy Weir",
+    src: "scenes/landing/phm.png",
+    status: "reading" as const,
+    progress: 64,
+    chapter: 18,
+    scenes: 12,
+    format: "Ebook" as const,
+  },
+  {
+    title: "The Way of Kings",
+    author: "Brandon Sanderson",
+    src: "scenes/landing/stormlight.png",
+    status: "reading" as const,
+    progress: 8,
+    chapter: 4,
+    scenes: 1,
+    format: "Audiobook" as const,
+    seriesName: "Stormlight",
+    seriesOrder: 1,
+  },
+  {
+    title: "Dungeon Crawler Carl",
+    author: "Matt Dinniman",
+    src: "scenes/landing/dcc.png",
+    status: "reading" as const,
+    progress: 22,
+    chapter: 6,
+    scenes: 4,
+    format: "Ebook" as const,
+    seriesName: "DCC",
+    seriesOrder: 1,
+  },
+  {
+    title: "A Court of Thorns and Roses",
+    author: "Sarah J. Maas",
+    src: "scenes/landing/acotar.png",
+    status: "finished" as const,
+    progress: 100,
+    chapter: 39,
+    scenes: 18,
+    format: "Paperback" as const,
+    seriesName: "ACOTAR",
+    seriesOrder: 1,
+  },
+];
+
+const SHELF_TABS = [
+  { key: "all", label: "All", count: 14 },
+  { key: "reading", label: "Reading", count: 3 },
+  { key: "want", label: "Want to read", count: 7 },
+  { key: "finished", label: "Finished", count: 4 },
+] as const;
+
+function FormatTag({ format }: { format: "Paperback" | "Ebook" | "Audiobook" }) {
+  const Icon =
+    format === "Audiobook" ? Headphones : format === "Ebook" ? Tablet : BookOpen;
+  return (
+    <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold text-muted-foreground/80 bg-foreground/5 px-1.5 py-0.5 rounded">
+      <Icon className="w-2.5 h-2.5" />
+      {format}
+    </span>
+  );
+}
+
+function ShelfBookRow({ book }: { book: (typeof SHELF_MOCK)[number] }) {
+  return (
+    <div className="flex items-center gap-2.5 p-2 rounded-xl bg-foreground/5 ring-1 ring-foreground/10">
+      <img
+        src={`${BASE}${book.src}`}
+        alt=""
+        aria-hidden="true"
+        className="w-12 h-14 rounded-md object-cover flex-shrink-0"
+        loading="lazy"
+      />
+      <div className="flex-1 min-w-0 space-y-1">
+        <div className="flex items-center gap-1.5">
+          <p className="text-[9px] uppercase tracking-wide text-muted-foreground truncate">
+            {book.author}
+          </p>
+          {book.seriesName && (
+            <span className="text-[8px] font-mono text-primary/80 bg-primary/10 px-1 rounded">
+              {book.seriesName} #{book.seriesOrder}
+            </span>
+          )}
+        </div>
+        <p className="font-serif text-[12px] leading-tight text-foreground truncate">
+          {book.title}
+        </p>
+        <div className="flex items-center gap-2">
+          <FormatTag format={book.format} />
+          {book.status === "finished" ? (
+            <span className="inline-flex items-center gap-1 text-[9px] uppercase tracking-wider font-semibold text-[var(--jtb-gold-200)]">
+              <CheckCheck className="w-2.5 h-2.5" />
+              Finished
+            </span>
+          ) : (
+            <span className="text-[9px] text-muted-foreground/80">
+              Ch {book.chapter} · {book.scenes} {book.scenes === 1 ? "scene" : "scenes"}
+            </span>
+          )}
+        </div>
+        {book.status !== "finished" && (
+          <div className="h-1 w-full rounded-full bg-foreground/10 overflow-hidden">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-primary to-[var(--jtb-spark-hi)]"
+              style={{ width: `${book.progress}%` }}
+            />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function BookshelfPhone() {
+  return (
+    <div className="relative mx-auto" data-testid="bookshelf-mockup">
+      <div
+        aria-hidden="true"
+        className="absolute -inset-12 -z-10 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(55% 55% at 50% 45%, rgba(242,42,140,0.22), rgba(242,42,140,0.06) 55%, transparent 75%)",
+          filter: "blur(10px)",
+        }}
+      />
+      <div className="relative w-[280px] h-[572px] mx-auto rounded-[44px] bg-[#0a0510] p-[10px] ring-2 ring-[hsl(271,30%,18%)] shadow-[0_30px_80px_-20px_rgba(0,0,0,0.7),0_0_0_1px_rgba(255,255,255,0.05)_inset]">
+        <div className="absolute top-[10px] left-1/2 -translate-x-1/2 w-24 h-[22px] rounded-b-2xl bg-black z-30" />
+        <div className="relative w-full h-full rounded-[34px] overflow-hidden bg-[hsl(271,40%,8%)]">
+          <div className="absolute top-0 inset-x-0 h-9 flex items-center justify-between px-5 pt-2 text-[10px] text-foreground/70 font-medium z-20 pointer-events-none">
+            <span>9:41</span>
+            <span className="opacity-70">100%</span>
+          </div>
+          <div className="absolute inset-0 pt-9 flex flex-col">
+            <div className="px-4 pt-3 pb-2 flex items-center justify-between">
+              <p className="font-serif text-[15px] text-foreground">Bookshelf</p>
+              <div className="w-7 h-7 rounded-full bg-primary/30 ring-1 ring-primary/40" />
+            </div>
+            <div className="px-3 pb-2">
+              <div className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-foreground/5 ring-1 ring-foreground/10">
+                <Search className="w-3 h-3 text-muted-foreground/70" />
+                <span className="text-[10px] text-muted-foreground/70">
+                  Search 14 books
+                </span>
+              </div>
+            </div>
+            <div className="px-3 pb-2 flex items-center gap-1 overflow-x-auto no-scrollbar">
+              {SHELF_TABS.map((t) => {
+                const active = t.key === "reading";
+                return (
+                  <span
+                    key={t.key}
+                    className={cn(
+                      "shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-all",
+                      active
+                        ? "bg-primary/15 text-primary ring-1 ring-primary/40"
+                        : "text-muted-foreground/80",
+                    )}
+                  >
+                    {t.label}
+                    <span
+                      className={cn(
+                        "text-[9px] font-mono",
+                        active ? "text-primary/80" : "text-muted-foreground/60",
+                      )}
+                    >
+                      {t.count}
+                    </span>
+                  </span>
+                );
+              })}
+            </div>
+            <div className="px-3 pb-3 space-y-2 flex-1 overflow-hidden">
+              {SHELF_MOCK.map((b) => (
+                <ShelfBookRow key={b.title} book={b} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div
+        aria-hidden="true"
+        className="absolute left-1/2 -translate-x-1/2 -bottom-3 w-[60%] h-5 pointer-events-none"
+        style={{
+          background:
+            "radial-gradient(50% 100% at 50% 0%, rgba(0,0,0,0.55), transparent 70%)",
+          filter: "blur(6px)",
+        }}
+      />
+    </div>
+  );
+}
+
+function BookshelfShowcase() {
+  return (
+    <section
+      data-testid="section-bookshelf"
+      className="relative py-20 sm:py-28 bg-gradient-to-b from-[hsl(271,45%,7%)] via-background to-[hsl(271,45%,6%)]"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="grid lg:grid-cols-[auto_1fr] gap-12 lg:gap-16 items-center">
+          {/*
+            Source order = mobile order. Phone mockup first so the visual hook
+            lands before the bullet wall on Android Chrome. On lg+ the grid
+            naturally places the phone in column 1 (left) and the text in column 2.
+          */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+          >
+            <BookshelfPhone />
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.6, ease: "easeOut", delay: 0.1 }}
+            className="space-y-8 text-center lg:text-left"
+          >
+            <div className="space-y-4">
+              <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+                <Layers className="w-3.5 h-3.5" />
+                <span>Every book you're on, in one place</span>
+              </div>
+              <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.1]">
+                Your bookshelf,{" "}
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-[var(--jtb-gold-200)] to-[var(--jtb-spark)]">
+                  smarter.
+                </span>
+              </h2>
+              <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-[520px] mx-auto lg:mx-0">
+                Status tabs that actually mean something. Series-aware sort so
+                the next one's always queued. Search every title and author in
+                a tap. And a Now Reading page that picks up exactly where you
+                left off — chapter, scene and all.
+              </p>
+            </div>
+
+            <ul className="space-y-4 text-left max-w-[520px] mx-auto lg:mx-0">
+              <ShelfFeatureBullet
+                icon={<CheckCheck className="w-4 h-4" />}
+                title="Status that means something"
+                body="Reading, Want to read, Finished. Auto-graduates when you hit 100%, so your shelf is honest without you babysitting it."
+              />
+              <ShelfFeatureBullet
+                icon={<Layers className="w-4 h-4" />}
+                title="Series-aware sort"
+                body="Stormlight #1, ACOTAR #1, DCC #1 — sorted in series order so the next one's queued and standalones don't get buried."
+              />
+              <ShelfFeatureBullet
+                icon={<Search className="w-4 h-4" />}
+                title="Search the whole shelf"
+                body="Title, author, series — type three letters and your library narrows. Works across Reading, Want to read and Finished at once."
+              />
+              <ShelfFeatureBullet
+                icon={<BookOpen className="w-4 h-4" />}
+                title="Picks up where you left off"
+                body="Now Reading shows progress, the latest scene you painted, and a Continue button that drops you back into chapter and verse."
+              />
+            </ul>
+
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-2 justify-center lg:justify-start">
+              <Link
+                href="/sign-up"
+                data-testid="link-bookshelf-signup"
+                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
+              >
+                Build my shelf
+                <ArrowRight className="w-4 h-4" />
+              </Link>
+              <span className="text-xs text-muted-foreground/70 self-center">
+                Free. No credit card. Your books stay yours.
+              </span>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function ShelfFeatureBullet({
+  icon,
+  title,
+  body,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+}) {
+  return (
+    <li className="flex gap-3">
+      <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 text-primary flex items-center justify-center mt-0.5">
+        {icon}
+      </div>
+      <div className="space-y-0.5">
+        <h3 className="font-serif text-base sm:text-lg text-foreground leading-tight">
+          {title}
+        </h3>
+        <p className="text-sm text-muted-foreground leading-relaxed">{body}</p>
+      </div>
+    </li>
   );
 }
 
