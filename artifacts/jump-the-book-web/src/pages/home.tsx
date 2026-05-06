@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useBookSearch, type BookSearchResult } from "@/hooks/useApiLibrary";
+import { apiFetch } from "@/lib/queryClient";
 
 /**
  * ScrollBunny: A scroll-reactive bunny matching the front-facing logo grammar.
@@ -241,6 +242,28 @@ function canonicalBookTitle(value: string): string {
   return normalizeBookTitle(value).split(" ").slice(0, 6).join(" ");
 }
 
+function levenshteinDistance(a: string, b: string): number {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const matrix = Array.from({ length: a.length + 1 }, () =>
+    Array<number>(b.length + 1).fill(0),
+  );
+  for (let i = 0; i <= a.length; i++) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= a.length; i++) {
+    for (let j = 1; j <= b.length; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+  return matrix[a.length][b.length];
+}
+
 function findShowcaseMatch(value: string | Pick<BookSearchResult, "title">): Showcase | null {
   const title = typeof value === "string" ? value : value.title;
   const target = canonicalBookTitle(title);
@@ -252,9 +275,41 @@ function findShowcaseMatch(value: string | Pick<BookSearchResult, "title">): Sho
   );
 }
 
+function findLooseShowcaseMatch(value: string): Showcase | null {
+  const target = normalizeBookTitle(value);
+  if (target.length < 3) return null;
+  let best: { item: Showcase; score: number } | null = null;
+  for (const item of SHOWCASE) {
+    const title = normalizeBookTitle(item.title);
+    const author = normalizeBookTitle(item.author);
+    const titleDistance = levenshteinDistance(target, title);
+    const authorDistance = levenshteinDistance(target, author);
+    const prefixHit = title.includes(target) || target.includes(title);
+    const score = prefixHit
+      ? 0
+      : Math.min(titleDistance, authorDistance + 2);
+    if (!best || score < best.score) {
+      best = { item, score };
+    }
+  }
+  if (!best) return null;
+  const limit = Math.max(3, Math.floor(target.length * 0.28));
+  return best.score <= limit ? best.item : null;
+}
+
 type TryPreview =
   | { kind: "recognized"; item: Showcase }
-  | { kind: "search"; result: BookSearchResult };
+  | { kind: "search"; result: BookSearchResult }
+  | {
+      kind: "guest";
+      result: BookSearchResult;
+      scene: {
+        title: string;
+        summary: string;
+        narration: string;
+        imageUrl?: string | null;
+      };
+    };
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -686,15 +741,26 @@ function ShowcaseCarousel() {
 }
 
 function TryNowSection() {
+  const [draftQuery, setDraftQuery] = useState("Project Hail Mary");
   const [query, setQuery] = useState("Project Hail Mary");
+  const [momentPrompt, setMomentPrompt] = useState("");
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [preview, setPreview] = useState<TryPreview>({
     kind: "recognized",
     item: SHOWCASE[1],
   });
+  const [didSubmit, setDidSubmit] = useState(false);
+  const [isGeneratingGuest, setIsGeneratingGuest] = useState(false);
+  const [guestLimitReached, setGuestLimitReached] = useState(false);
+  const [guestError, setGuestError] = useState<string | null>(null);
   const resultsQ = useBookSearch(query);
   const results = resultsQ.data ?? [];
   const isSearching = resultsQ.isLoading || resultsQ.isFetching;
+
+  useEffect(() => {
+    const loose = findLooseShowcaseMatch(draftQuery);
+    if (loose) setPreview({ kind: "recognized", item: loose });
+  }, [draftQuery]);
 
   useEffect(() => {
     if (query.trim().length < 3) return;
@@ -709,8 +775,19 @@ function TryNowSection() {
     if (selected.key !== selectedKey) setSelectedKey(selected.key);
   }, [query, results, selectedKey]);
 
+  const submitSearch = () => {
+    const next = draftQuery.trim();
+    setDidSubmit(true);
+    setSelectedKey(null);
+    setQuery(next);
+    const localMatch = findLooseShowcaseMatch(next);
+    if (localMatch) setPreview({ kind: "recognized", item: localMatch });
+  };
+
   const handleQuickPick = (title: string) => {
+    setDraftQuery(title);
     setQuery(title);
+    setDidSubmit(true);
     setSelectedKey(null);
     const match = findShowcaseMatch(title);
     if (match) setPreview({ kind: "recognized", item: match });
@@ -722,254 +799,272 @@ function TryNowSection() {
     setPreview(match ? { kind: "recognized", item: match } : { kind: "search", result });
   };
 
+  const selectedSearchResult =
+    preview.kind === "search" || preview.kind === "guest"
+      ? preview.result
+      : results.find((result) => {
+          const match = findShowcaseMatch(result);
+          return match?.title === preview.item.title;
+        }) ?? null;
+
+  const generateGuestScene = async () => {
+    if (!selectedSearchResult || guestLimitReached || isGeneratingGuest) return;
+    setGuestError(null);
+    setIsGeneratingGuest(true);
+    try {
+      const response = await apiFetch<{
+        scene: {
+          title: string;
+          summary: string;
+          narration: string;
+          imageUrl?: string | null;
+        };
+        limitReached: boolean;
+      }>("/scenes/guest-preview", {
+        method: "POST",
+        body: JSON.stringify({
+          bookTitle: selectedSearchResult.title,
+          author: selectedSearchResult.author,
+          prompt: momentPrompt.trim() || undefined,
+          visualStyle: "fantasy-illustration",
+        }),
+      });
+      setPreview({
+        kind: "guest",
+        result: selectedSearchResult,
+        scene: response.scene,
+      });
+      setGuestLimitReached(true);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not generate preview";
+      if (message.includes("403")) {
+        setGuestLimitReached(true);
+        setGuestError("Your free guest scene has already been used. Sign up to generate more.");
+      } else {
+        setGuestError("Preview generation is busy right now. Please try again in a moment.");
+      }
+    } finally {
+      setIsGeneratingGuest(false);
+    }
+  };
+
   return (
-    <section
+    <div
       id="try-now"
-      className="relative py-16 sm:py-24 bg-gradient-to-b from-background via-[hsl(271,45%,7%)] to-[hsl(271,45%,6%)] scroll-mt-16"
+      className="rounded-[28px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-4 sm:p-5 shadow-[0_18px_60px_rgba(0,0,0,0.2)] text-left"
     >
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
-        <div className="max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
-            <Search className="w-3.5 h-3.5" />
-            <span>Try it now from the homepage</span>
-          </div>
-          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.08]">
-            Search a book. Load a sample scene.
-          </h2>
-          <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-3xl">
-            This is the honest version: public search is live, and recognised
-            titles can load an instant painted preview right here. Full
-            chapter-by-chapter generation still starts after signup.
-          </p>
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 jtb-eyebrow text-primary">
+          <Search className="w-3.5 h-3.5" />
+          <span>Try it now in one search</span>
+        </div>
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            id="home-book-search"
+            value={draftQuery}
+            onChange={(e) => {
+              setDraftQuery(e.currentTarget.value);
+              setSelectedKey(null);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                submitSearch();
+              }
+            }}
+            placeholder="Search a title or author"
+            autoComplete="off"
+            className="w-full h-12 rounded-2xl border border-border/60 bg-background/60 pl-11 pr-28 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none ring-0 transition-colors focus:border-primary/50"
+          />
+          {isSearching && (
+            <Loader2 className="absolute right-24 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+          )}
+          <button
+            type="button"
+            onClick={submitSearch}
+            className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex h-8 items-center rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground shadow-[0_6px_20px_rgba(242,42,140,0.35)] hover:brightness-110 transition-[filter]"
+          >
+            Search
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {QUICK_PICKS.map((title) => (
+            <button
+              key={title}
+              type="button"
+              onClick={() => handleQuickPick(title)}
+              className="inline-flex items-center rounded-full border border-border/50 bg-background/40 px-3 py-1.5 text-[11px] font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+            >
+              {title}
+            </button>
+          ))}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] items-start">
-          <div className="rounded-[28px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-5 sm:p-6 shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
-            <div className="space-y-4">
-              <label htmlFor="home-book-search" className="text-sm font-medium text-foreground">
-                Search by title or author
-              </label>
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                <input
-                  id="home-book-search"
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.currentTarget.value);
-                    setSelectedKey(null);
-                  }}
-                  placeholder="e.g. Red Rising or Project Hail Mary"
-                  autoComplete="off"
-                  className="w-full h-14 rounded-2xl border border-border/60 bg-background/60 pl-11 pr-11 text-base text-foreground placeholder:text-muted-foreground/70 outline-none ring-0 transition-colors focus:border-primary/50"
-                />
-                {isSearching && (
-                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+        {selectedSearchResult && (
+          <div className="rounded-2xl border border-border/40 bg-background/30 p-4 space-y-4">
+            <div className="flex gap-3">
+              <div className="w-16 h-24 rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-border/40">
+                {selectedSearchResult.coverUrl ? (
+                  <img
+                    src={selectedSearchResult.coverUrlLarge ?? selectedSearchResult.coverUrl}
+                    alt={`Cover of ${selectedSearchResult.title}`}
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="w-full h-full bg-gradient-to-br from-[hsl(271,28%,16%)] to-[hsl(271,28%,24%)]" />
                 )}
               </div>
-              <div className="flex flex-wrap gap-2">
-                {QUICK_PICKS.map((title) => (
-                  <button
-                    key={title}
-                    type="button"
-                    onClick={() => handleQuickPick(title)}
-                    className="inline-flex items-center rounded-full border border-border/50 bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
-                  >
-                    {title}
-                  </button>
-                ))}
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-serif text-lg leading-tight text-foreground">
+                    {selectedSearchResult.title}
+                  </p>
+                  {preview.kind === "recognized" && (
+                    <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                      Instant preview ready
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  {selectedSearchResult.author}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground/75">
+                  {preview.kind === "recognized"
+                    ? "Ready-to-go sample on the homepage, or use your one free real scene below."
+                    : "Not in the ready library? Generate one real guest scene, then sign up for more."}
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground/80">
-                Desktop web works today. iPhone and Android apps are coming
-                soon, but you don’t need to wait for the app stores.
-              </p>
             </div>
 
-            <div className="mt-5 space-y-3">
-              {query.trim().length < 3 ? (
-                <div className="rounded-2xl border border-dashed border-border/50 px-4 py-6 text-sm text-muted-foreground">
-                  Type a title and we’ll pull live book matches here.
-                </div>
-              ) : results.length > 0 ? (
-                results.slice(0, 5).map((result) => {
-                  const match = findShowcaseMatch(result);
-                  const active =
-                    preview.kind === "recognized"
-                      ? match?.title === preview.item.title
-                      : preview.kind === "search" && preview.result.key === result.key;
-                  return (
-                    <button
-                      key={result.key}
-                      type="button"
-                      onClick={() => handleResultSelect(result)}
-                      className={cn(
-                        "w-full text-left rounded-2xl border p-3 transition-all",
-                        active
-                          ? "border-primary/50 bg-primary/10"
-                          : "border-border/40 bg-background/30 hover:border-primary/30",
-                      )}
-                    >
-                      <div className="flex gap-3">
-                        <div className="w-14 h-20 rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-border/40">
-                          {result.coverUrl ? (
-                            <img
-                              src={result.coverUrl}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                              loading="lazy"
-                            />
-                          ) : (
-                            <div className="w-full h-full bg-gradient-to-br from-[hsl(271,28%,16%)] to-[hsl(271,28%,24%)]" />
-                          )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-serif text-base leading-tight text-foreground line-clamp-2">
-                              {result.title}
-                            </p>
-                            {match && (
-                              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
-                                Preview ready
-                              </span>
-                            )}
-                          </div>
-                          <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
-                            {result.author}
-                          </p>
-                          <p className="mt-2 text-xs text-muted-foreground/75">
-                            {match
-                              ? "Load the recognised cover and painted sample scene now."
-                              : "Book found. Sign up to paint your exact chapter."}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })
-              ) : !isSearching ? (
-                <div className="rounded-2xl border border-dashed border-border/50 px-4 py-6 text-sm text-muted-foreground">
-                  No matches yet. Try the title or the author’s surname.
-                </div>
-              ) : null}
+            <textarea
+              value={momentPrompt}
+              onChange={(e) => setMomentPrompt(e.currentTarget.value)}
+              rows={2}
+              placeholder="Optional: what moment should we paint?"
+              className="w-full rounded-2xl border border-border/60 bg-background/60 px-4 py-3 text-sm text-foreground placeholder:text-muted-foreground/70 outline-none transition-colors focus:border-primary/50 resize-none"
+            />
+
+            <div className="flex flex-col sm:flex-row gap-3">
+              {preview.kind === "recognized" && (
+                <button
+                  type="button"
+                  onClick={() => setPreview({ kind: "recognized", item: preview.item })}
+                  className="inline-flex items-center justify-center h-11 px-5 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
+                >
+                  Load instant preview
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={generateGuestScene}
+                disabled={!selectedSearchResult || guestLimitReached || isGeneratingGuest}
+                className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isGeneratingGuest ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Painting your one free scene…
+                  </>
+                ) : guestLimitReached ? (
+                  "Free scene used"
+                ) : (
+                  "Generate 1 free real scene"
+                )}
+              </button>
             </div>
           </div>
+        )}
 
-          <div className="rounded-[30px] overflow-hidden ring-1 ring-border/40 bg-[hsl(271,32%,8%)] shadow-[0_20px_70px_rgba(0,0,0,0.26)]">
-            {preview.kind === "recognized" ? (
-              <div
-                className="relative min-h-[520px] sm:min-h-[580px]"
-                style={{ background: preview.item.gradient }}
+        {!selectedSearchResult && query.trim().length >= 3 && results.length > 0 && (
+          <div className="space-y-2">
+            {results.slice(0, 3).map((result) => (
+              <button
+                key={result.key}
+                type="button"
+                onClick={() => handleResultSelect(result)}
+                className="w-full rounded-2xl border border-border/40 bg-background/30 p-3 text-left hover:border-primary/30 transition-colors"
               >
+                <p className="font-serif text-base text-foreground">{result.title}</p>
+                <p className="text-xs text-muted-foreground">{result.author}</p>
+              </button>
+            ))}
+          </div>
+        )}
+
+        {didSubmit && query.trim().length >= 3 && results.length === 0 && !isSearching && (
+          <div className="rounded-2xl border border-dashed border-border/50 px-4 py-4 text-sm text-muted-foreground">
+            No public catalog hit yet. Try the author’s surname or one of the
+            quick picks.
+          </div>
+        )}
+
+        {(preview.kind === "recognized" || preview.kind === "guest") && (
+          <div className="rounded-[24px] overflow-hidden ring-1 ring-border/40 bg-[hsl(271,32%,8%)] shadow-[0_18px_50px_rgba(0,0,0,0.26)]">
+            {preview.kind === "recognized" ? (
+              <div className="relative min-h-[280px]" style={{ background: preview.item.gradient }}>
                 <img
                   src={`${BASE}${preview.item.src}`}
                   alt={`Painted preview from ${preview.item.title}`}
                   className="absolute inset-0 h-full w-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
-                <div className="absolute top-5 left-5 right-5 flex items-start justify-between gap-4">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1 text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--jtb-spark-hi)] backdrop-blur">
-                    <Sparkles className="w-3 h-3" />
-                    Instant preview
-                  </div>
-                  <img
-                    src={preview.item.coverSrc}
-                    alt={`Cover of ${preview.item.title}`}
-                    className="w-28 sm:w-32 rounded-[18px] ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_24px_50px_rgba(0,0,0,0.45)]"
-                    loading="lazy"
-                  />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div className="absolute top-4 right-4 w-20 rounded-[14px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_18px_35px_rgba(0,0,0,0.42)]">
+                  <img src={preview.item.coverSrc} alt={`Cover of ${preview.item.title}`} className="w-full aspect-[2/3] object-cover" loading="lazy" />
                 </div>
-                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 space-y-4">
-                  <div className="space-y-2 max-w-2xl">
-                    <p className="text-[10px] uppercase tracking-[0.24em] text-primary/90 font-semibold">
-                      {preview.item.author}
-                    </p>
-                    <h3 className="font-serif text-3xl sm:text-4xl leading-[1.08] text-white">
-                      {preview.item.title}
-                    </h3>
-                    <p className="text-base text-white/80 max-w-xl">
-                      {preview.item.caption}
-                    </p>
-                    <p className="text-sm text-white/72 max-w-xl">
-                      {preview.item.proof}
-                    </p>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-3">
-                    <Link
-                      href="/sign-up"
-                      className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
-                    >
-                      Paint my chapter next
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                    <a
-                      href="#section-bookshelf"
-                      className="inline-flex items-center justify-center h-12 px-6 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
-                    >
-                      See the rest of the product
-                    </a>
-                  </div>
+                <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                    Instant preview
+                  </p>
+                  <p className="font-serif text-2xl text-white">{preview.item.title}</p>
+                  <p className="text-sm text-white/75">{preview.item.caption}</p>
                 </div>
               </div>
             ) : (
-              <div className="min-h-[520px] sm:min-h-[580px] p-6 sm:p-8 flex flex-col justify-between bg-[radial-gradient(circle_at_top,rgba(216,27,122,0.16),transparent_50%),linear-gradient(180deg,hsl(271,35%,10%),hsl(271,40%,7%))]">
-                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] font-semibold text-primary">
-                  <Search className="w-3 h-3" />
-                  Book found
-                </div>
-                <div className="flex flex-col sm:flex-row items-start gap-5">
-                  <div className="w-40 rounded-[20px] overflow-hidden ring-1 ring-border/40 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
-                    {preview.result.coverUrl ? (
-                      <img
-                        src={preview.result.coverUrlLarge ?? preview.result.coverUrl}
-                        alt={`Cover of ${preview.result.title}`}
-                        className="w-full aspect-[2/3] object-cover"
-                        loading="lazy"
-                      />
-                    ) : (
-                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-[hsl(271,24%,18%)] to-[hsl(271,28%,28%)]" />
-                    )}
-                  </div>
-                  <div className="space-y-3">
-                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary/90 font-semibold">
-                      {preview.result.author}
-                    </p>
-                    <h3 className="font-serif text-3xl sm:text-4xl leading-[1.08] text-white">
-                      {preview.result.title}
-                    </h3>
-                    <p className="text-base text-white/75 max-w-xl">
-                      We can already recognise this title and carry its cover
-                      into your shelf. Full chapter painting starts once you
-                      sign in and tell us where you are in the book.
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                      <Link
-                        href="/sign-up"
-                        className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
-                      >
-                        Generate this after signup
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleQuickPick("Project Hail Mary")}
-                        className="inline-flex items-center justify-center h-12 px-6 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
-                      >
-                        Load a recognised preview
-                      </button>
-                    </div>
+              <div className="relative min-h-[280px] bg-[radial-gradient(circle_at_top,rgba(216,27,122,0.16),transparent_50%),linear-gradient(180deg,hsl(271,35%,10%),hsl(271,40%,7%))]">
+                {preview.scene.imageUrl ? (
+                  <img
+                    src={preview.scene.imageUrl}
+                    alt={`Guest preview scene from ${preview.result.title}`}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : null}
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/65 to-black/15" />
+                <div className="absolute inset-x-0 bottom-0 p-4 space-y-2">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                    Your one free scene
+                  </p>
+                  <p className="font-serif text-2xl text-white">{preview.scene.title}</p>
+                  <p className="text-sm text-white/80">{preview.scene.summary}</p>
+                  <div className="pt-2">
+                    <Link
+                      href="/sign-up"
+                      className="inline-flex items-center justify-center gap-2 h-10 px-4 rounded-[10px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter]"
+                    >
+                      Sign up for more scenes
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </div>
                 </div>
-                <p className="text-xs text-white/55">
-                  Instant scene previews are currently available for recognised
-                  titles on this page. Full on-demand generation stays
-                  spoiler-safe behind your account.
-                </p>
               </div>
             )}
           </div>
-        </div>
+        )}
+
+        {guestError && (
+          <div className="rounded-2xl border border-border/40 bg-background/30 px-4 py-3 text-sm text-muted-foreground">
+            {guestError}
+          </div>
+        )}
+
+        <p className="text-xs text-muted-foreground/80">
+          Web app live now on desktop and mobile web. Native apps are coming
+          soon. Guest mode gets one real scene; signup unlocks the rest.
+        </p>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -1022,7 +1117,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: "easeOut" }}
-            className="space-y-6 lg:max-w-[600px] text-center lg:text-left z-10"
+            className="space-y-6 lg:max-w-[680px] text-center lg:text-left z-10"
           >
             <div className="inline-flex items-center justify-center lg:justify-start gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
               <Sparkles className="w-3.5 h-3.5" />
@@ -1060,6 +1155,9 @@ export default function Home() {
               Use it in your browser today on desktop or mobile. App Store
               and Google Play builds are coming soon.
             </p>
+            <div className="pt-2">
+              <TryNowSection />
+            </div>
           </motion.div>
 
           <motion.div
@@ -1072,9 +1170,6 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
-
-      {/* ── Try it now ─────────────────────────────────────────────────────── */}
-      <TryNowSection />
 
       {/* ── Showcase gallery ────────────────────────────────────────────────── */}
       <ShowcaseCarousel />

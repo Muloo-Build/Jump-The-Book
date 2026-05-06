@@ -336,6 +336,207 @@ interface GenerateBody {
   currentSceneCharacters?: string[];
 }
 
+interface GuestPreviewBody {
+  bookTitle: string;
+  author: string;
+  visualStyle?: string;
+  prompt?: string;
+}
+
+const GUEST_PREVIEW_COOKIE = "jtb_guest_preview_used";
+const GUEST_PREVIEW_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 30;
+
+router.post("/scenes/guest-preview", async (req, res) => {
+  try {
+    const {
+      bookTitle,
+      author,
+      visualStyle = "fantasy-illustration",
+      prompt,
+    } = req.body as GuestPreviewBody;
+
+    if (!bookTitle || !author) {
+      res.status(400).json({ error: "bookTitle and author are required" });
+      return;
+    }
+
+    if (req.cookies?.[GUEST_PREVIEW_COOKIE] === "1") {
+      res.status(403).json({
+        error: "Guest preview already used",
+        limitReached: true,
+      });
+      return;
+    }
+
+    const teaserPrompt = (prompt ?? "").trim();
+    const bundleParams = {
+      bookTitle,
+      author,
+      chapterTitle: "Guest preview",
+      chapterNumber: 1,
+      visualStyle,
+      spoilerMode: "no-spoilers",
+      excerpt: teaserPrompt ? `guest:${teaserPrompt}` : "guest:no-context",
+      sceneCount: 1,
+    };
+    const sceneCacheKey = makeSceneCacheKey(bundleParams);
+    const cachedBundle = await getSceneBundle(sceneCacheKey);
+    const cachedScenes = Array.isArray(cachedBundle?.scenes)
+      ? (cachedBundle.scenes as CachedScene[])
+      : [];
+
+    let scene: CachedScene | null = null;
+    if (cachedScenes[0]) {
+      scene = cachedScenes[0];
+      req.log.info({ sceneCacheKey, bookTitle }, "guest preview scene cache hit");
+    } else {
+      const userPrompt = `Book: "${bookTitle}" by ${author}
+Landing-page guest preview only.
+${teaserPrompt ? `The visitor says this is the moment they want painted: ${teaserPrompt}\n` : ""}
+Generate exactly 1 spoiler-safe teaser scene. This is a taste, not a summary.
+
+Rules:
+- No spoilers, twists, deaths, betrayals, or outcomes
+- No plot summary beyond the immediate atmosphere
+- Evoke one compelling visual moment
+- If the visitor gave a moment, honor it without extrapolating ahead
+- If no moment was given, choose an atmospheric early-book feeling instead
+- Return valid JSON only`;
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-5.4",
+        max_completion_tokens: 1800,
+        response_format: { type: "json_object" },
+        messages: [
+          { role: "system", content: SPOILER_SYSTEM },
+          { role: "user", content: userPrompt },
+        ],
+      });
+
+      const raw = completion.choices[0]?.message?.content ?? "{}";
+      let parsed: { scenes?: unknown[] };
+      try {
+        parsed = JSON.parse(raw);
+      } catch {
+        parsed = { scenes: [] };
+      }
+
+      const first = Array.isArray(parsed.scenes) ? parsed.scenes[0] : null;
+      if (!first || typeof first !== "object") {
+        res.status(502).json({ error: "Failed to generate preview scene" });
+        return;
+      }
+
+      const obj = first as Record<string, unknown>;
+      scene = {
+        title: String(obj.title ?? ""),
+        summary: String(obj.summary ?? ""),
+        narration: String(obj.narration ?? ""),
+        location: String(obj.location ?? ""),
+        mood: String(obj.mood ?? ""),
+        characters: Array.isArray(obj.characters)
+          ? (obj.characters as string[])
+          : [],
+        gradientColors: Array.isArray(obj.gradientColors)
+          ? (obj.gradientColors as string[])
+          : ["#1a1a4e", "#3a1a6e", "#9d7fe8"],
+        imagePrompt: String(obj.imagePrompt ?? ""),
+        atmosphericMode: teaserPrompt.length === 0,
+      };
+
+      const imageCacheKey = makeImageCacheKey({
+        bookTitle,
+        author,
+        chapterNumber: 1,
+        sceneIndex: 0,
+        visualStyle,
+        prompt: scene.imagePrompt,
+        consistencySignature: `safety:${SAFETY_POLICY_VERSION}|roster:guest`,
+      });
+      scene.imageCacheKey = imageCacheKey;
+
+      await saveSceneBundle(sceneCacheKey, bundleParams, [scene]);
+      req.log.info({ sceneCacheKey, bookTitle }, "guest preview scene generated");
+    }
+
+    if (!scene) {
+      res.status(502).json({ error: "Failed to prepare preview scene" });
+      return;
+    }
+
+    const imageCacheKey =
+      scene.imageCacheKey ??
+      makeImageCacheKey({
+        bookTitle,
+        author,
+        chapterNumber: 1,
+        sceneIndex: 0,
+        visualStyle,
+        prompt: scene.imagePrompt ?? "",
+        consistencySignature: `safety:${SAFETY_POLICY_VERSION}|roster:guest`,
+      });
+
+    let imageUrl = scene.imageUrl ?? null;
+    const cachedImage = await getCachedImage(imageCacheKey);
+    if (cachedImage) {
+      imageUrl = objectPathToUrl(cachedImage.objectPath);
+      req.log.info({ imageCacheKey, bookTitle }, "guest preview image cache hit");
+    } else {
+      const styleDesc = STYLE_DESCRIPTIONS[visualStyle] ?? "illustrated";
+      const fullPrompt = `${styleDesc}. ${scene.imagePrompt} ${SAFETY_SUFFIX}`;
+      const buffer = await generateImageBuffer(fullPrompt, "1024x1024");
+      const objectPath = await objectStorage.uploadBufferAsObjectEntity(
+        buffer,
+        "image/png",
+      );
+      await saveCachedImage(
+        imageCacheKey,
+        {
+          bookTitle,
+          author,
+          chapterNumber: 1,
+          sceneIndex: 0,
+          visualStyle,
+          prompt: scene.imagePrompt ?? "",
+          consistencySignature: `safety:${SAFETY_POLICY_VERSION}|roster:guest`,
+        },
+        {
+          objectPath,
+          bytes: buffer.length,
+          creatorUserId: null,
+        },
+      );
+      imageUrl = objectPathToUrl(objectPath);
+      req.log.info({ imageCacheKey, bookTitle }, "guest preview image generated");
+    }
+
+    res.cookie(GUEST_PREVIEW_COOKIE, "1", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      maxAge: GUEST_PREVIEW_MAX_AGE_MS,
+    });
+
+    res.json({
+      scene: {
+        ...scene,
+        imageCacheKey,
+        imageUrl,
+      },
+      limitReached: false,
+      remainingGuestScenes: 0,
+    });
+  } catch (err) {
+    if (isRateLimitError(err)) {
+      req.log.warn({ err }, "guest preview rate limited");
+      res.status(429).json({ error: "Preview generation is busy right now" });
+      return;
+    }
+    req.log.error({ err }, "guest preview generation failed");
+    res.status(500).json({ error: "Failed to generate guest preview" });
+  }
+});
+
 router.post("/scenes/generate", requireAuth, async (req, res) => {
   try {
     const requesterId = (req as AuthedRequest).userId;
