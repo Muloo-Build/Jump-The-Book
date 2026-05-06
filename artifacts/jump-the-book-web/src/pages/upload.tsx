@@ -1,5 +1,10 @@
 import { useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
+import {
+  BOOK_FORMATS,
+  DEFAULT_BOOK_FORMAT,
+  type BookFormat,
+} from "@workspace/jump-the-book-shared";
 import Layout from "@/components/layout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -17,6 +22,10 @@ import BookSearch from "@/components/book-search";
 import SnapCoverButton from "@/components/snap-cover-button";
 import { Show } from "@clerk/react";
 
+function formatFromParsedFile(kind: "EPUB" | "PDF" | "Text"): BookFormat {
+  return kind === "EPUB" ? "Ebook" : DEFAULT_BOOK_FORMAT;
+}
+
 export default function Upload() {
   const [, setLocation] = useLocation();
   const { addBook } = useLibrary();
@@ -29,7 +38,7 @@ export default function Upload() {
   const [style, setStyle] = useState<VisualStyle>("dark-cinematic");
   const [spoiler, setSpoiler] = useState<SpoilerMode>("no-spoilers");
   const [chapter, setChapter] = useState("1");
-  const [format, setFormat] = useState("EPUB");
+  const [format, setFormat] = useState<BookFormat>("Ebook");
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -39,7 +48,7 @@ export default function Upload() {
     try {
       const result = await parseBookFile(file);
       setParsedData({ title: result.title, author: result.author || "Unknown Author" });
-      setFormat(result.format);
+      setFormat(formatFromParsedFile(result.format));
       toast({
         title: `${result.format} parsed`,
         description: `Found ${result.chapters.length} chapter${result.chapters.length === 1 ? "" : "s"}. Ready to set up your reading experience.`,
@@ -236,11 +245,21 @@ export default function Upload() {
                   </div>
                   <div className="space-y-2">
                     <Label>Format</Label>
-                    <Input
+                    <Select
                       value={format}
-                      onChange={(e) => setFormat(e.target.value)}
-                      placeholder="e.g. EPUB, Paperback"
-                    />
+                      onValueChange={(value) => setFormat(value as BookFormat)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {BOOK_FORMATS.map((option) => (
+                          <SelectItem key={option} value={option}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Visual Style</Label>

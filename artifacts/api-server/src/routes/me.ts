@@ -6,6 +6,10 @@ import {
   userBooksTable,
   userScenesTable,
 } from "@workspace/db/schema";
+import {
+  DEFAULT_BOOK_FORMAT,
+  isBookFormat,
+} from "@workspace/jump-the-book-shared";
 import { and, desc, eq, gte, sql } from "drizzle-orm";
 import { requireAuth, type AuthedRequest } from "../middlewares/requireAuth";
 
@@ -740,6 +744,10 @@ router.post("/me/books", async (req, res) => {
       res.status(400).json({ error: "Invalid spoilerMode" });
       return;
     }
+    if (body.format !== undefined && !isBookFormat(body.format)) {
+      res.status(400).json({ error: "Invalid format" });
+      return;
+    }
     if (body.currentChapter !== undefined && (!isFiniteInt(body.currentChapter) || body.currentChapter < 0)) {
       res.status(400).json({ error: "currentChapter must be a non-negative integer" });
       return;
@@ -842,7 +850,7 @@ router.post("/me/books", async (req, res) => {
         userId,
         title,
         author,
-        format: body.format ?? "Paperback",
+        format: body.format ?? DEFAULT_BOOK_FORMAT,
         source: body.source,
         demoBookId: body.demoBookId ?? null,
         coverGradient: body.coverGradient ?? [],
@@ -919,6 +927,10 @@ router.patch("/me/books/:id", async (req, res) => {
     }
     if (body.readingStatus !== undefined && !READING_STATUSES.has(body.readingStatus)) {
       res.status(400).json({ error: "Invalid readingStatus" });
+      return;
+    }
+    if (body.format !== undefined && !isBookFormat(body.format)) {
+      res.status(400).json({ error: "Invalid format" });
       return;
     }
     if (
@@ -1344,7 +1356,7 @@ router.post("/me/orphan-scenes/claim", async (req, res) => {
           userId,
           title,
           author,
-          format: "Paperback",
+          format: DEFAULT_BOOK_FORMAT,
           source: "manual",
           coverGradient: [],
           visualStyle,

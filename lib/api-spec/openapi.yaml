@@ -33,4 +33,26 @@ components:
           type: string
       required:
         - status
-
+    BookFormat:
+      type: string
+      enum:
+        - Paperback
+        - Ebook
+        - Audiobook
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        author:
+          type: string
+        format:
+          $ref: "#/components/schemas/BookFormat"
+      required:
+        - id
+        - title
+        - author
+        - format

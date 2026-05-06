@@ -1,8 +1,9 @@
 import { Link } from "wouter";
 import { motion } from "framer-motion";
-import { Check, RefreshCw, Wand2 } from "lucide-react";
+import { Check, RefreshCw, Wand2, Headphones, Tablet, BookOpen } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { isBookFormat, type BookFormat } from "@workspace/jump-the-book-shared";
 import {
   useOpenLibraryEnrichment,
   clearEnrichmentCache,
@@ -19,6 +20,7 @@ export interface LibraryBookTileBook {
   id: string;
   title: string;
   author: string;
+  format: string;
   coverGradient: string[];
   heroImage?: string;
   coverUrl?: string | null;
@@ -54,6 +56,7 @@ export default function LibraryBookTile({ book, index, hasBible = false, showSta
     enabled: needsOl,
   });
   const webCover = needsOl ? enrichment.coverUrl : null;
+  const format = isBookFormat(book.format) ? book.format : null;
 
   const handleRefresh = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -66,6 +69,9 @@ export default function LibraryBookTile({ book, index, hasBible = false, showSta
     // small delay so the toast renders before reload
     setTimeout(() => window.location.reload(), 400);
   };
+
+  const formatIcon = (value: BookFormat) =>
+    value === "Audiobook" ? Headphones : value === "Ebook" ? Tablet : BookOpen;
 
   return (
     <motion.div
@@ -179,6 +185,11 @@ export default function LibraryBookTile({ book, index, hasBible = false, showSta
             <p className="text-xs sm:text-sm text-muted-foreground line-clamp-1">
               {book.author}
             </p>
+            {format && (
+              <div className="pt-0.5">
+                <FormatBadge format={format} icon={formatIcon(format)} />
+              </div>
+            )}
             {progress > 0 && !finished && (
               <div className="space-y-1 pt-1">
                 <Progress value={progress} className="h-1" />
@@ -196,5 +207,20 @@ export default function LibraryBookTile({ book, index, hasBible = false, showSta
         </Card>
       </Link>
     </motion.div>
+  );
+}
+
+function FormatBadge({
+  format,
+  icon: Icon,
+}: {
+  format: BookFormat;
+  icon: typeof BookOpen;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-border/50 bg-card/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+      <Icon className="h-3 w-3" />
+      {format}
+    </span>
   );
 }

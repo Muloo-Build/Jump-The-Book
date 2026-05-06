@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useUser } from "@clerk/react";
 import type { SpoilerMode, UserLibraryItem, VisualStyle } from "@/data/books";
+import { DEFAULT_BOOK_FORMAT, normalizeBookFormat } from "@workspace/jump-the-book-shared";
 import {
   useAddRemoteBook,
   useDeleteRemoteBook,
@@ -119,7 +120,7 @@ function remoteBookToItem(b: RemoteBook): UserLibraryItem & {
     id,
     title: b.title,
     author: b.author,
-    format: b.format,
+    format: normalizeBookFormat(b.format),
     currentChapter: b.currentChapter,
     currentPage: b.currentPage,
     currentAudioTimestamp: b.currentAudioTimestamp,
@@ -244,7 +245,7 @@ export function useLibrary() {
       const created = await addRemoteBook.mutateAsync({
         title: book.title,
         author: book.author,
-        format: book.format ?? "Paperback",
+        format: normalizeBookFormat(book.format ?? DEFAULT_BOOK_FORMAT),
         source: isDemo ? "demo" : "manual",
         demoBookId: isDemo ? book.id : null,
         coverGradient: book.coverGradient ?? [],

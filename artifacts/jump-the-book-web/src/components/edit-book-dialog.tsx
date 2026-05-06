@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Pencil, Sparkles, BookOpen, Search, ChevronDown } from "lucide-react";
 import {
+  BOOK_FORMATS,
+  normalizeBookFormat,
+  type BookFormat,
+} from "@workspace/jump-the-book-shared";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -12,6 +17,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import {
   useClaimOrphanScenes,
@@ -64,6 +76,7 @@ export default function EditBookDialog({
   const [tagline, setTagline] = useState("");
   const [heroImage, setHeroImage] = useState("");
   const [totalChapters, setTotalChapters] = useState("");
+  const [format, setFormat] = useState<BookFormat>("Paperback");
 
   // Claim-orphan specific state
   const [authorQuery, setAuthorQuery] = useState("");
@@ -82,6 +95,7 @@ export default function EditBookDialog({
       setAuthor(mode.book.author);
       setTagline(mode.book.tagline ?? "");
       setHeroImage(mode.book.heroImage ?? "");
+      setFormat(normalizeBookFormat(mode.book.format));
       setTotalChapters(
         mode.book.totalChapters != null ? String(mode.book.totalChapters) : "",
       );
@@ -90,6 +104,7 @@ export default function EditBookDialog({
       setAuthor("");
       setTagline("");
       setHeroImage("");
+      setFormat("Paperback");
       setTotalChapters("");
       setAuthorQuery("");
       setSearchResults([]);
@@ -159,6 +174,7 @@ export default function EditBookDialog({
         const body: Record<string, unknown> = {
           title: title.trim(),
           author: author.trim(),
+          format,
           tagline: tagline.trim() || null,
           heroImage: heroImage.trim() || null,
         };
@@ -313,6 +329,21 @@ export default function EditBookDialog({
               </div>
 
               <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="edit-book-format">Format</Label>
+                  <Select value={format} onValueChange={(value) => setFormat(value as BookFormat)}>
+                    <SelectTrigger id="edit-book-format">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BOOK_FORMATS.map((option) => (
+                        <SelectItem key={option} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-book-chapters">
                     Total chapters{" "}

@@ -6,4 +6,6 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./book";
+export * from "./bookFormat";
 export * from "./healthStatus";

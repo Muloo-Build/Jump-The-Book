@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLocation, useSearch } from "wouter";
 import { useUser } from "@clerk/react";
+import {
+  BOOK_FORMATS,
+  DEFAULT_BOOK_FORMAT,
+  normalizeBookFormat,
+  type BookFormat,
+} from "@workspace/jump-the-book-shared";
 import Layout from "@/components/layout";
 import BibleEditor from "@/components/bible-editor";
 import CoverPicker from "@/components/cover-picker";
@@ -40,15 +46,6 @@ import {
   Wand2,
 } from "lucide-react";
 
-const FORMATS = [
-  "Paperback",
-  "Hardcover",
-  "EPUB",
-  "Kindle",
-  "Audible",
-  "Other",
-];
-
 const STEPS = [
   { n: 1, title: "Identify the book" },
   { n: 2, title: "Build the bible" },
@@ -80,7 +77,7 @@ interface PendingSetup {
   author: string;
   series: string;
   bookNumber: string;
-  format: string;
+  format: BookFormat;
   chapter: string;
   excerpt: string;
   whatJustHappened: string;
@@ -149,7 +146,9 @@ export default function SetupBook() {
   const [bookNumber, setBookNumber] = useState<string>(
     initialPending?.bookNumber ?? "",
   );
-  const [format, setFormat] = useState(initialPending?.format ?? "Paperback");
+  const [format, setFormat] = useState<BookFormat>(
+    () => normalizeBookFormat(initialPending?.format ?? DEFAULT_BOOK_FORMAT),
+  );
   const [chapter, setChapter] = useState(initialPending?.chapter ?? "1");
   const [excerpt, setExcerpt] = useState(initialPending?.excerpt ?? "");
   const [whatJustHappened, setWhatJustHappened] = useState(
@@ -805,8 +804,8 @@ interface Step1Props {
   setSeries: (v: string) => void;
   bookNumber: string;
   setBookNumber: (v: string) => void;
-  format: string;
-  setFormat: (v: string) => void;
+  format: BookFormat;
+  setFormat: (v: BookFormat) => void;
   chapter: string;
   setChapter: (v: string) => void;
   excerpt: string;
@@ -862,12 +861,15 @@ function Step1(p: Step1Props) {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <FieldLabel label="Format">
-            <Select value={p.format} onValueChange={p.setFormat}>
+            <Select
+              value={p.format}
+              onValueChange={(value) => p.setFormat(value as BookFormat)}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {FORMATS.map((f) => (
+                {BOOK_FORMATS.map((f) => (
                   <SelectItem key={f} value={f}>
                     {f}
                   </SelectItem>

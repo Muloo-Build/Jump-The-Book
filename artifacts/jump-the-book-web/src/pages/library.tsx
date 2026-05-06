@@ -3,6 +3,11 @@ import { Link, useSearch } from "wouter";
 import Layout from "@/components/layout";
 import { DEMO_BOOKS } from "@/data/books";
 import type { ReadingStatus } from "@/data/books";
+import {
+  BOOK_FORMATS,
+  normalizeBookFormat,
+  type BookFormat,
+} from "@workspace/jump-the-book-shared";
 import { useLibrary } from "@/lib/library";
 import {
   useRemoteSceneLibrary,
@@ -11,7 +16,7 @@ import {
 } from "@/hooks/useApiLibrary";
 import { useUserBibleSummaries } from "@/hooks/useBookBible";
 import { motion } from "framer-motion";
-import { Plus, Sparkles, Loader2, BookOpen, BookMarked, CheckCircle2, ChevronDown, ChevronsDownUp, ChevronsUpDown } from "lucide-react";
+import { Plus, Sparkles, Loader2, BookOpen, BookMarked, CheckCircle2, ChevronDown, ChevronsDownUp, ChevronsUpDown, Headphones, Tablet } from "lucide-react";
 import { Show } from "@clerk/react";
 import ReadingStats from "@/components/reading-stats";
 import LibraryBookTile from "@/components/library-book-tile";
@@ -32,6 +37,17 @@ const STATUS_TABS: { key: ReadingStatus | "all"; label: string; icon: typeof Boo
   { key: "finished", label: "Finished", icon: CheckCircle2 },
 ];
 
+const FORMAT_FILTERS: {
+  key: BookFormat | "all";
+  label: string;
+  icon: typeof BookOpen;
+}[] = [
+  { key: "all", label: "All formats", icon: BookOpen },
+  { key: "Paperback", label: "Paperback", icon: BookOpen },
+  { key: "Ebook", label: "Ebook", icon: Tablet },
+  { key: "Audiobook", label: "Audiobook", icon: Headphones },
+];
+
 export default function Library() {
   const { userLibrary, isSignedIn, activeBookId } = useLibrary();
   const sceneLib = useRemoteSceneLibrary();
@@ -43,6 +59,7 @@ export default function Library() {
     [search],
   );
   const [activeTab, setActiveTab] = useState<ReadingStatus | "all">("all");
+  const [activeFormat, setActiveFormat] = useState<BookFormat | "all">("all");
 
   // Persist per-series collapsed state in localStorage so a reader's preferred
   // layout (e.g. Discworld collapsed) survives page reloads. We key by the
@@ -113,6 +130,9 @@ export default function Library() {
         return status === activeTab;
       });
     }
+    if (activeFormat !== "all") {
+      list = list.filter((b) => normalizeBookFormat(b.format) === activeFormat);
+    }
     return [...list].sort((a, b) => {
       const sA = a.seriesName?.toLowerCase() ?? "";
       const sB = b.seriesName?.toLowerCase() ?? "";
@@ -125,7 +145,7 @@ export default function Library() {
       if (sA > sB) return 1;
       return 0;
     });
-  }, [userLibrary, q, activeTab]);
+  }, [userLibrary, q, activeTab, activeFormat]);
 
   const seriesGroups = useMemo(() => {
     type GroupBook = typeof filteredLibrary[number];
@@ -201,6 +221,35 @@ export default function Library() {
     }
     return counts;
   }, [userLibrary]);
+
+  const formatBaseList = useMemo(() => {
+    let list = userLibrary;
+    if (q) {
+      const needle = q.toLowerCase();
+      list = list.filter(
+        (b) =>
+          b.title.toLowerCase().includes(needle) ||
+          b.author.toLowerCase().includes(needle),
+      );
+    }
+    if (activeTab !== "all") {
+      list = list.filter((b) => {
+        const status = b.readingStatus ?? (b.progress != null && b.progress >= 100 ? "finished" : "reading");
+        return status === activeTab;
+      });
+    }
+    return list;
+  }, [userLibrary, q, activeTab]);
+
+  const formatCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: formatBaseList.length };
+    for (const format of BOOK_FORMATS) counts[format] = 0;
+    for (const book of formatBaseList) {
+      const format = normalizeBookFormat(book.format);
+      counts[format] = (counts[format] ?? 0) + 1;
+    }
+    return counts;
+  }, [formatBaseList]);
 
   const bookIdMap = useMemo(() => {
     const map = new Map<string, { displayId: string; title: string }>();
@@ -373,8 +422,8 @@ export default function Library() {
                     </>
                   ) : (
                     <>
-                      {userLibrary.length}{" "}
-                      {userLibrary.length === 1 ? "book" : "books"}
+                      {filteredLibrary.length}{" "}
+                      {filteredLibrary.length === 1 ? "book" : "books"}
                     </>
                   )}
                 </p>
@@ -391,17 +440,66 @@ export default function Library() {
           </div>
 
           {hasBooks && (
-            <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {STATUS_TABS.map((tab) => {
+                    const count = statusCounts[tab.key] ?? 0;
+                    const isActive = activeTab === tab.key;
+                    const TabIcon = tab.icon;
+                    return (
+                      <button
+                        key={tab.key}
+                        type="button"
+                        onClick={() => setActiveTab(tab.key)}
+                        className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
+                          isActive
+                            ? "bg-primary/20 text-[var(--jtb-accent-hi)] border border-primary/40"
+                            : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent",
+                        )}
+                      >
+                        <TabIcon className="w-3.5 h-3.5" />
+                        {tab.label}
+                        <span className={cn(
+                          "text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center",
+                          isActive ? "bg-primary/30" : "bg-card/50",
+                        )}>
+                          {count}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {seriesGroups.groups.length >= 2 && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setAllSeriesCollapsed(seriesCollapseKeys, !allSeriesCollapsed)
+                    }
+                    aria-pressed={allSeriesCollapsed}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors"
+                  >
+                    {allSeriesCollapsed ? (
+                      <ChevronsUpDown className="w-3.5 h-3.5" aria-hidden="true" />
+                    ) : (
+                      <ChevronsDownUp className="w-3.5 h-3.5" aria-hidden="true" />
+                    )}
+                    {allSeriesCollapsed ? "Expand all" : "Collapse all"}
+                  </button>
+                )}
+              </div>
+
               <div className="flex items-center gap-1 flex-wrap">
-                {STATUS_TABS.map((tab) => {
-                  const count = statusCounts[tab.key] ?? 0;
-                  const isActive = activeTab === tab.key;
-                  const TabIcon = tab.icon;
+                {FORMAT_FILTERS.map((filter) => {
+                  const count = formatCounts[filter.key] ?? 0;
+                  const isActive = activeFormat === filter.key;
+                  const FilterIcon = filter.icon;
                   return (
                     <button
-                      key={tab.key}
+                      key={filter.key}
                       type="button"
-                      onClick={() => setActiveTab(tab.key)}
+                      onClick={() => setActiveFormat(filter.key)}
                       className={cn(
                         "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium transition-colors",
                         isActive
@@ -409,8 +507,8 @@ export default function Library() {
                           : "text-muted-foreground hover:text-foreground hover:bg-card/50 border border-transparent",
                       )}
                     >
-                      <TabIcon className="w-3.5 h-3.5" />
-                      {tab.label}
+                      <FilterIcon className="w-3.5 h-3.5" />
+                      {filter.label}
                       <span className={cn(
                         "text-[10px] rounded-full px-1.5 py-0.5 min-w-[18px] text-center",
                         isActive ? "bg-primary/30" : "bg-card/50",
@@ -421,23 +519,6 @@ export default function Library() {
                   );
                 })}
               </div>
-              {seriesGroups.groups.length >= 2 && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    setAllSeriesCollapsed(seriesCollapseKeys, !allSeriesCollapsed)
-                  }
-                  aria-pressed={allSeriesCollapsed}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border/50 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card/50 transition-colors"
-                >
-                  {allSeriesCollapsed ? (
-                    <ChevronsUpDown className="w-3.5 h-3.5" aria-hidden="true" />
-                  ) : (
-                    <ChevronsDownUp className="w-3.5 h-3.5" aria-hidden="true" />
-                  )}
-                  {allSeriesCollapsed ? "Expand all" : "Collapse all"}
-                </button>
-              )}
             </div>
           )}
 
@@ -507,10 +588,13 @@ export default function Library() {
                 </>
               ) : (
                 <>
-                  No books with status "{STATUS_TABS.find((t) => t.key === activeTab)?.label}".{" "}
+                  No books match this filter combination.{" "}
                   <button
                     type="button"
-                    onClick={() => setActiveTab("all")}
+                    onClick={() => {
+                      setActiveTab("all");
+                      setActiveFormat("all");
+                    }}
                     className="text-[var(--jtb-accent-hi)] hover:text-[var(--jtb-accent-hi)] underline underline-offset-2"
                   >
                     Show all
@@ -520,7 +604,7 @@ export default function Library() {
             </div>
           ) : (
             <motion.div
-              key={activeTab}
+              key={`${activeTab}:${activeFormat}`}
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.2 }}

@@ -33,8 +33,9 @@ The project is built as a pnpm workspace monorepo using TypeScript.
     - Server-side book deduplication and orphan scene recovery.
     - Comprehensive book editing, reading status tracking, and series awareness.
     - Smart Book Setup Wizard for adding and contextualizing books.
-    - Dedicated "Now Reading" page and "Bookshelf" for library management with status filtering.
+    - Dedicated "Now Reading" page and "Bookshelf" for library management with combined status + format filtering.
     - Unified "Add" page for book input via Smart Setup, cover snapping, search, or file upload.
+    - Format-aware flows across setup, upload, editing, and shelf badges using the canonical `Paperback | Ebook | Audiobook` set.
     - Mobile-optimized UI for book tiles and reading statistics.
 - **Scene Generation and Viewing:**
     - AI-powered scene generation using OpenAI models.

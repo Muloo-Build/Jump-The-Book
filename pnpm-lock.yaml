@@ -184,6 +184,9 @@ importers:
       '@workspace/integrations-openai-ai-server':
         specifier: workspace:*
         version: link:../../lib/integrations-openai-ai-server
+      '@workspace/jump-the-book-shared':
+        specifier: workspace:*
+        version: link:../../lib/jump-the-book-shared
       cookie-parser:
         specifier: ^1.4.7
         version: 1.4.7

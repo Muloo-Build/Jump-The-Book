@@ -5,9 +5,6 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
-export interface HealthStatus {
-  status: string;
-}
 
 export type BookFormat = (typeof BookFormat)[keyof typeof BookFormat];
 
@@ -16,10 +13,3 @@ export const BookFormat = {
   Ebook: "Ebook",
   Audiobook: "Audiobook",
 } as const;
-
-export interface Book {
-  id: string;
-  title: string;
-  author: string;
-  format: BookFormat;
-}
