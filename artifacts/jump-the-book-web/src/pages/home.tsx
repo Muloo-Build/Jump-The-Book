@@ -16,7 +16,6 @@ import {
   ArrowRight,
   ChevronLeft,
   ChevronRight,
-  Play,
   Upload,
   Search,
   Layers,
@@ -25,8 +24,12 @@ import {
   CheckCheck,
   MessageSquareText,
   Library,
+  Loader2,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useBookSearch, type BookSearchResult } from "@/hooks/useApiLibrary";
 
 /**
  * ScrollBunny: A scroll-reactive bunny matching the front-facing logo grammar.
@@ -110,55 +113,6 @@ function ScrollBunny() {
 /**
  * Signed-out landing screen.
  */
-
-interface DemoBook {
-  id: string;
-  title: string;
-  author: string;
-  hook: string;
-  thumbnail: string;
-  gradient: string;
-  badge: string;
-}
-
-const DEMOS: DemoBook[] = [
-  {
-    id: "alice",
-    title: "Alice in Wonderland",
-    author: "Lewis Carroll",
-    hook: "Down the rabbit hole, in six painted scenes.",
-    thumbnail: "scenes/alice-ch1-s3.png",
-    gradient: "linear-gradient(135deg, #1a0a3a, #3a1a6a, #8b5cf6)",
-    badge: "Whimsical",
-  },
-  {
-    id: "dracula",
-    title: "Dracula",
-    author: "Bram Stoker",
-    hook: "A coach into the Carpathians. Nobody comes back.",
-    thumbnail: "scenes/dracula-ch1-s2.png",
-    gradient: "linear-gradient(135deg, #1a0a0a, #3a0a0a, #8b0000)",
-    badge: "Gothic",
-  },
-  {
-    id: "frankenstein",
-    title: "Frankenstein",
-    author: "Mary Shelley",
-    hook: "A storm. A laboratory. Something opens its eyes.",
-    thumbnail: "scenes/frank-ch1-s2.png",
-    gradient: "linear-gradient(135deg, #0a1a0a, #1a3a1a, #2a6a2a)",
-    badge: "Horror",
-  },
-  {
-    id: "sherlock",
-    title: "Sherlock Holmes",
-    author: "Arthur Conan Doyle",
-    hook: "Baker Street, gaslight, and a client in disguise.",
-    thumbnail: "scenes/sherlock-ch1-s1.png",
-    gradient: "linear-gradient(135deg, #1a1208, #3a2808, #c9974a)",
-    badge: "Mystery",
-  },
-];
 
 interface Showcase {
   src: string;
@@ -267,6 +221,40 @@ const STORY_FEATURES = [
     body: "Paperback, ebook, audiobook, imported shelf, recognized title, painted scenes. It all lands in one library.",
   },
 ] as const;
+
+const QUICK_PICKS = [
+  "Project Hail Mary",
+  "Fourth Wing",
+  "The Way of Kings",
+  "Dungeon Crawler Carl",
+] as const;
+
+function normalizeBookTitle(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function canonicalBookTitle(value: string): string {
+  return normalizeBookTitle(value).split(" ").slice(0, 6).join(" ");
+}
+
+function findShowcaseMatch(value: string | Pick<BookSearchResult, "title">): Showcase | null {
+  const title = typeof value === "string" ? value : value.title;
+  const target = canonicalBookTitle(title);
+  return (
+    SHOWCASE.find((item) => {
+      const own = canonicalBookTitle(item.title);
+      return own === target || own.startsWith(target) || target.startsWith(own);
+    }) ?? null
+  );
+}
+
+type TryPreview =
+  | { kind: "recognized"; item: Showcase }
+  | { kind: "search"; result: BookSearchResult };
 
 const BASE = import.meta.env.BASE_URL;
 
@@ -638,7 +626,7 @@ function ShowcaseCarousel() {
               key={item.title}
               data-testid={`showcase-card-${i}`}
               data-carousel-card
-              className="relative shrink-0 snap-start snap-always w-[78vw] sm:w-[420px] lg:w-[480px] rounded-2xl overflow-hidden group ring-1 ring-border/40 hover:ring-primary/30 transition-all"
+              className="relative shrink-0 snap-start snap-always w-[85vw] sm:w-[520px] lg:w-[620px] rounded-[26px] overflow-hidden group ring-1 ring-border/40 hover:ring-primary/30 transition-all"
               style={{ background: item.gradient }}
             >
               <div className="aspect-[16/10] overflow-hidden">
@@ -649,32 +637,32 @@ function ShowcaseCarousel() {
                   loading="lazy"
                 />
               </div>
-              <div className="absolute inset-x-0 top-0 p-4 flex items-start justify-between gap-3">
+              <div className="absolute inset-x-0 top-0 p-4 sm:p-5 flex items-start justify-between gap-3">
                 <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--jtb-spark-hi)] backdrop-blur">
                   <Sparkles className="w-3 h-3" />
                   Recognised title
                 </div>
-                <div className="relative w-16 sm:w-[72px] shrink-0">
-                  <div className="absolute inset-0 rounded-[14px] bg-black/45 blur-md scale-95" />
+                <div className="relative w-24 sm:w-28 lg:w-32 shrink-0 translate-y-3">
+                  <div className="absolute inset-0 rounded-[18px] bg-black/50 blur-md scale-95" />
                   <img
                     src={item.coverSrc}
                     alt={`Cover of ${item.title}`}
-                    className="relative aspect-[2/3] w-full rounded-[14px] object-cover ring-1 ring-white/15 shadow-[0_18px_36px_rgba(0,0,0,0.45)]"
+                    className="relative aspect-[2/3] w-full rounded-[18px] object-cover ring-1 ring-[var(--jtb-gold-200)]/60 shadow-[0_22px_50px_rgba(0,0,0,0.5)]"
                     loading="lazy"
                   />
                 </div>
               </div>
-              <div className="absolute inset-x-0 bottom-0 p-5 bg-gradient-to-t from-black via-black/80 to-transparent">
-                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold mb-1 pr-20 sm:pr-24">
+              <div className="absolute inset-x-0 bottom-0 p-5 sm:p-6 bg-gradient-to-t from-black via-black/80 to-transparent">
+                <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold mb-1 pr-28 sm:pr-32">
                   {item.author}
                 </p>
-                <p className="font-serif text-lg sm:text-xl text-white leading-tight mb-1 pr-20 sm:pr-24">
+                <p className="font-serif text-xl sm:text-2xl text-white leading-tight mb-1 pr-28 sm:pr-32">
                   {item.title}
                 </p>
-                <p className="text-sm text-white/70 line-clamp-2">
+                <p className="text-sm sm:text-base text-white/75 line-clamp-2">
                   {item.caption}
                 </p>
-                <p className="mt-3 text-[11px] sm:text-xs text-white/80 max-w-[30rem]">
+                <p className="mt-3 text-[11px] sm:text-xs text-white/80 max-w-[34rem]">
                   {item.proof}
                 </p>
               </div>
@@ -692,6 +680,294 @@ function ShowcaseCarousel() {
           shown for illustration; covers and trademarks belong to their
           respective rights holders.
         </p>
+      </div>
+    </section>
+  );
+}
+
+function TryNowSection() {
+  const [query, setQuery] = useState("Project Hail Mary");
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [preview, setPreview] = useState<TryPreview>({
+    kind: "recognized",
+    item: SHOWCASE[1],
+  });
+  const resultsQ = useBookSearch(query);
+  const results = resultsQ.data ?? [];
+  const isSearching = resultsQ.isLoading || resultsQ.isFetching;
+
+  useEffect(() => {
+    if (query.trim().length < 3) return;
+    if (results.length === 0) return;
+    const selected =
+      results.find((result) => result.key === selectedKey) ??
+      results.find((result) => !!findShowcaseMatch(result)) ??
+      results[0];
+    if (!selected) return;
+    const match = findShowcaseMatch(selected);
+    setPreview(match ? { kind: "recognized", item: match } : { kind: "search", result: selected });
+    if (selected.key !== selectedKey) setSelectedKey(selected.key);
+  }, [query, results, selectedKey]);
+
+  const handleQuickPick = (title: string) => {
+    setQuery(title);
+    setSelectedKey(null);
+    const match = findShowcaseMatch(title);
+    if (match) setPreview({ kind: "recognized", item: match });
+  };
+
+  const handleResultSelect = (result: BookSearchResult) => {
+    setSelectedKey(result.key);
+    const match = findShowcaseMatch(result);
+    setPreview(match ? { kind: "recognized", item: match } : { kind: "search", result });
+  };
+
+  return (
+    <section
+      id="try-now"
+      className="relative py-16 sm:py-24 bg-gradient-to-b from-background via-[hsl(271,45%,7%)] to-[hsl(271,45%,6%)] scroll-mt-16"
+    >
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8">
+        <div className="max-w-3xl space-y-4">
+          <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+            <Search className="w-3.5 h-3.5" />
+            <span>Try it now from the homepage</span>
+          </div>
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.08]">
+            Search a book. Load a sample scene.
+          </h2>
+          <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-3xl">
+            This is the honest version: public search is live, and recognised
+            titles can load an instant painted preview right here. Full
+            chapter-by-chapter generation still starts after signup.
+          </p>
+        </div>
+
+        <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] items-start">
+          <div className="rounded-[28px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-5 sm:p-6 shadow-[0_18px_60px_rgba(0,0,0,0.2)]">
+            <div className="space-y-4">
+              <label htmlFor="home-book-search" className="text-sm font-medium text-foreground">
+                Search by title or author
+              </label>
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                <input
+                  id="home-book-search"
+                  value={query}
+                  onChange={(e) => {
+                    setQuery(e.currentTarget.value);
+                    setSelectedKey(null);
+                  }}
+                  placeholder="e.g. Red Rising or Project Hail Mary"
+                  autoComplete="off"
+                  className="w-full h-14 rounded-2xl border border-border/60 bg-background/60 pl-11 pr-11 text-base text-foreground placeholder:text-muted-foreground/70 outline-none ring-0 transition-colors focus:border-primary/50"
+                />
+                {isSearching && (
+                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground animate-spin" />
+                )}
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_PICKS.map((title) => (
+                  <button
+                    key={title}
+                    type="button"
+                    onClick={() => handleQuickPick(title)}
+                    className="inline-flex items-center rounded-full border border-border/50 bg-background/40 px-3 py-1.5 text-xs font-medium text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+                  >
+                    {title}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground/80">
+                Desktop web works today. iPhone and Android apps are coming
+                soon, but you don’t need to wait for the app stores.
+              </p>
+            </div>
+
+            <div className="mt-5 space-y-3">
+              {query.trim().length < 3 ? (
+                <div className="rounded-2xl border border-dashed border-border/50 px-4 py-6 text-sm text-muted-foreground">
+                  Type a title and we’ll pull live book matches here.
+                </div>
+              ) : results.length > 0 ? (
+                results.slice(0, 5).map((result) => {
+                  const match = findShowcaseMatch(result);
+                  const active =
+                    preview.kind === "recognized"
+                      ? match?.title === preview.item.title
+                      : preview.kind === "search" && preview.result.key === result.key;
+                  return (
+                    <button
+                      key={result.key}
+                      type="button"
+                      onClick={() => handleResultSelect(result)}
+                      className={cn(
+                        "w-full text-left rounded-2xl border p-3 transition-all",
+                        active
+                          ? "border-primary/50 bg-primary/10"
+                          : "border-border/40 bg-background/30 hover:border-primary/30",
+                      )}
+                    >
+                      <div className="flex gap-3">
+                        <div className="w-14 h-20 rounded-xl overflow-hidden bg-muted shrink-0 ring-1 ring-border/40">
+                          {result.coverUrl ? (
+                            <img
+                              src={result.coverUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="w-full h-full object-cover"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-gradient-to-br from-[hsl(271,28%,16%)] to-[hsl(271,28%,24%)]" />
+                          )}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-serif text-base leading-tight text-foreground line-clamp-2">
+                              {result.title}
+                            </p>
+                            {match && (
+                              <span className="inline-flex items-center rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">
+                                Preview ready
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-muted-foreground line-clamp-1">
+                            {result.author}
+                          </p>
+                          <p className="mt-2 text-xs text-muted-foreground/75">
+                            {match
+                              ? "Load the recognised cover and painted sample scene now."
+                              : "Book found. Sign up to paint your exact chapter."}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              ) : !isSearching ? (
+                <div className="rounded-2xl border border-dashed border-border/50 px-4 py-6 text-sm text-muted-foreground">
+                  No matches yet. Try the title or the author’s surname.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="rounded-[30px] overflow-hidden ring-1 ring-border/40 bg-[hsl(271,32%,8%)] shadow-[0_20px_70px_rgba(0,0,0,0.26)]">
+            {preview.kind === "recognized" ? (
+              <div
+                className="relative min-h-[520px] sm:min-h-[580px]"
+                style={{ background: preview.item.gradient }}
+              >
+                <img
+                  src={`${BASE}${preview.item.src}`}
+                  alt={`Painted preview from ${preview.item.title}`}
+                  className="absolute inset-0 h-full w-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/55 to-black/10" />
+                <div className="absolute top-5 left-5 right-5 flex items-start justify-between gap-4">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/45 px-3 py-1 text-[10px] uppercase tracking-[0.18em] font-semibold text-[var(--jtb-spark-hi)] backdrop-blur">
+                    <Sparkles className="w-3 h-3" />
+                    Instant preview
+                  </div>
+                  <img
+                    src={preview.item.coverSrc}
+                    alt={`Cover of ${preview.item.title}`}
+                    className="w-28 sm:w-32 rounded-[18px] ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_24px_50px_rgba(0,0,0,0.45)]"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-5 sm:p-7 space-y-4">
+                  <div className="space-y-2 max-w-2xl">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-primary/90 font-semibold">
+                      {preview.item.author}
+                    </p>
+                    <h3 className="font-serif text-3xl sm:text-4xl leading-[1.08] text-white">
+                      {preview.item.title}
+                    </h3>
+                    <p className="text-base text-white/80 max-w-xl">
+                      {preview.item.caption}
+                    </p>
+                    <p className="text-sm text-white/72 max-w-xl">
+                      {preview.item.proof}
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Link
+                      href="/sign-up"
+                      className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
+                    >
+                      Paint my chapter next
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
+                    <a
+                      href="#section-bookshelf"
+                      className="inline-flex items-center justify-center h-12 px-6 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
+                    >
+                      See the rest of the product
+                    </a>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="min-h-[520px] sm:min-h-[580px] p-6 sm:p-8 flex flex-col justify-between bg-[radial-gradient(circle_at_top,rgba(216,27,122,0.16),transparent_50%),linear-gradient(180deg,hsl(271,35%,10%),hsl(271,40%,7%))]">
+                <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] font-semibold text-primary">
+                  <Search className="w-3 h-3" />
+                  Book found
+                </div>
+                <div className="flex flex-col sm:flex-row items-start gap-5">
+                  <div className="w-40 rounded-[20px] overflow-hidden ring-1 ring-border/40 shadow-[0_24px_50px_rgba(0,0,0,0.35)]">
+                    {preview.result.coverUrl ? (
+                      <img
+                        src={preview.result.coverUrlLarge ?? preview.result.coverUrl}
+                        alt={`Cover of ${preview.result.title}`}
+                        className="w-full aspect-[2/3] object-cover"
+                        loading="lazy"
+                      />
+                    ) : (
+                      <div className="w-full aspect-[2/3] bg-gradient-to-br from-[hsl(271,24%,18%)] to-[hsl(271,28%,28%)]" />
+                    )}
+                  </div>
+                  <div className="space-y-3">
+                    <p className="text-[10px] uppercase tracking-[0.2em] text-primary/90 font-semibold">
+                      {preview.result.author}
+                    </p>
+                    <h3 className="font-serif text-3xl sm:text-4xl leading-[1.08] text-white">
+                      {preview.result.title}
+                    </h3>
+                    <p className="text-base text-white/75 max-w-xl">
+                      We can already recognise this title and carry its cover
+                      into your shelf. Full chapter painting starts once you
+                      sign in and tell us where you are in the book.
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <Link
+                        href="/sign-up"
+                        className="inline-flex items-center justify-center gap-2 h-12 px-6 rounded-[12px] bg-primary text-primary-foreground border border-[rgba(255,122,194,0.45)] font-semibold text-sm hover:brightness-110 transition-[filter] shadow-[0_6px_28px_rgba(242,42,140,0.42)]"
+                      >
+                        Generate this after signup
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
+                      <button
+                        type="button"
+                        onClick={() => handleQuickPick("Project Hail Mary")}
+                        className="inline-flex items-center justify-center h-12 px-6 rounded-[12px] bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-colors"
+                      >
+                        Load a recognised preview
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-white/55">
+                  Instant scene previews are currently available for recognised
+                  titles on this page. Full on-demand generation stays
+                  spoiler-safe behind your account.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </section>
   );
@@ -722,13 +998,13 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <Link
               href="/sign-in"
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors hidden sm:block"
+              className="hidden sm:inline-flex h-9 items-center rounded-md px-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Sign in
             </Link>
             <Link
               href="/sign-up"
-              className="h-9 px-4 rounded-md bg-[rgba(255,255,255,0.06)] text-sm font-medium hover:bg-[rgba(255,255,255,0.1)] transition-colors border border-border/50"
+              className="inline-flex h-9 items-center rounded-md px-4 bg-[rgba(255,255,255,0.06)] text-sm font-medium hover:bg-[rgba(255,255,255,0.1)] transition-colors border border-border/50"
             >
               Sign up
             </Link>
@@ -773,16 +1049,16 @@ export default function Home() {
                 Paint a scene from my book
               </Link>
               <a
-                href="#classics"
+                href="#try-now"
                 className="inline-flex items-center justify-center h-12 px-6 rounded-[10px] bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-sm hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
-                data-testid="link-try-classic"
+                data-testid="link-try-now"
               >
-                Try it on a classic
+                Try it now
               </a>
             </div>
             <p className="text-xs text-muted-foreground/70 pt-1">
-              Drop in your EPUB — about 30 seconds. Or step into Alice,
-              Dracula, Frankenstein, or Sherlock with no signup at all.
+              Use it in your browser today on desktop or mobile. App Store
+              and Google Play builds are coming soon.
             </p>
           </motion.div>
 
@@ -797,128 +1073,17 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── Try it now ─────────────────────────────────────────────────────── */}
+      <TryNowSection />
+
       {/* ── Showcase gallery ────────────────────────────────────────────────── */}
       <ShowcaseCarousel />
 
       {/* ── Bookshelf, one place ───────────────────────────────────────────── */}
       <BookshelfShowcase />
 
-      {/* ── Classics demo picker ────────────────────────────────────────────── */}
-      <section
-        id="classics"
-        className="relative bg-gradient-to-b from-background to-[hsl(271,45%,6%)] scroll-mt-16 py-16 sm:py-24"
-      >
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 space-y-10">
-          <div className="space-y-4 max-w-2xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <Play className="w-3.5 h-3.5" style={{ color: "var(--jtb-spark)" }} />
-              <span>No book on you? Step into a classic.</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
-              Four classics, fully painted, no signup.
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              For modern books we need your EPUB — about thirty seconds.
-              These four are public domain, so we've pre-painted them and
-              you can step in right now. Tap a cover to drop into the
-              cinematic reader.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
-            {DEMOS.map((demo, i) => (
-              <motion.div
-                key={demo.id}
-                initial={{ opacity: 0, y: 16 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-60px" }}
-                transition={{ duration: 0.45, delay: i * 0.05, ease: "easeOut" }}
-              >
-                <Link
-                  href={`/experience/${demo.id}?chapter=1`}
-                  data-testid={`link-demo-${demo.id}`}
-                  className="group relative block overflow-hidden rounded-xl ring-1 ring-border/60 transition-all hover:-translate-y-1"
-                  style={{
-                    background: demo.gradient,
-                  }}
-                  onMouseEnter={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.boxShadow = "var(--jtb-glow-spark)";
-                  }}
-                  onMouseLeave={(e: React.MouseEvent<HTMLAnchorElement>) => {
-                    e.currentTarget.style.boxShadow = "";
-                  }}
-                  aria-label={`Try the ${demo.title} demo`}
-                >
-                  <div className="aspect-[3/4] sm:aspect-[4/5] overflow-hidden">
-                    <img
-                      src={`${BASE}${demo.thumbnail}`}
-                      alt=""
-                      aria-hidden="true"
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                  </div>
-                  <span
-                    className="absolute top-3 left-3 text-[10px] uppercase tracking-wider font-semibold px-2 py-1 rounded bg-black/65 backdrop-blur"
-                    style={{
-                      color: "var(--jtb-spark-hi)",
-                      border: "1px solid var(--jtb-spark-soft)",
-                    }}
-                  >
-                    {demo.badge}
-                  </span>
-                  <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/95 via-black/60 to-transparent">
-                    <p className="text-[10px] uppercase tracking-wider text-primary/90 font-semibold">
-                      {demo.author}
-                    </p>
-                    <p className="font-serif text-base sm:text-lg leading-tight text-white">
-                      {demo.title}
-                    </p>
-                    <p className="text-xs text-white/70 mt-1 leading-snug line-clamp-2">
-                      {demo.hook}
-                    </p>
-                    <span className="inline-flex items-center gap-1 mt-3 text-xs font-semibold text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all">
-                      Step in
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </span>
-                  </div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Story features under scenes ───────────────────────────────────── */}
-      <section className="relative py-16 sm:py-24 bg-gradient-to-b from-[hsl(271,45%,6%)] to-background">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6">
-          <div className="max-w-3xl mx-auto text-center space-y-4 mb-10 sm:mb-12">
-            <div className="inline-flex items-center gap-2 jtb-eyebrow">
-              <ImageIcon className="w-3.5 h-3.5" style={{ color: "var(--jtb-spark)" }} />
-              <span>What happens after the scene matters too</span>
-            </div>
-            <h2 className="font-serif text-3xl sm:text-4xl tracking-tight">
-              More than a one-off pretty image.
-            </h2>
-            <p className="text-muted-foreground leading-relaxed">
-              The scene is the hook. The product is everything wrapped around it:
-              recognised books, reader resume, organised formats, and reactions
-              worth coming back to.
-            </p>
-          </div>
-          <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
-            {STORY_FEATURES.map((feature, index) => (
-              <Feature
-                key={feature.title}
-                icon={feature.icon}
-                title={feature.title}
-                body={feature.body}
-                delay={index * 0.05}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
+      {/* ── Cross-device product showcase ─────────────────────────────────── */}
+      <CrossDeviceShowcase />
 
       {/* ── Closing CTA ───────────────────────────────────────────────────── */}
       <section className="relative bg-gradient-to-b from-background to-[hsl(271,45%,8%)]">
@@ -941,11 +1106,11 @@ export default function Home() {
               Paint a scene from my book
             </Link>
             <a
-              href="#classics"
+              href="#try-now"
               className="inline-flex items-center justify-center h-14 px-8 rounded-xl bg-transparent text-[var(--jtb-accent-hi)] border border-[var(--jtb-border-hi)] font-semibold text-base hover:bg-[rgba(201,169,106,0.06)] hover:border-primary transition-colors"
-              data-testid="link-try-classic-bottom"
+              data-testid="link-try-now-bottom"
             >
-              Try it on a classic
+              Try it now
             </a>
           </div>
         </div>
@@ -1167,6 +1332,7 @@ function BookshelfPhone() {
 function BookshelfShowcase() {
   return (
     <section
+      id="section-bookshelf"
       data-testid="section-bookshelf"
       className="relative py-20 sm:py-28 bg-gradient-to-b from-[hsl(271,45%,7%)] via-background to-[hsl(271,45%,6%)]"
     >
@@ -1249,6 +1415,172 @@ function BookshelfShowcase() {
               </span>
             </div>
           </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function DesktopWorkspaceMock() {
+  return (
+    <div className="relative" data-testid="desktop-workspace-mock">
+      <div
+        aria-hidden="true"
+        className="absolute -inset-10 -z-10"
+        style={{
+          background:
+            "radial-gradient(55% 55% at 50% 35%, rgba(242,42,140,0.18), rgba(242,42,140,0.04) 58%, transparent 78%)",
+          filter: "blur(12px)",
+        }}
+      />
+      <div className="rounded-[28px] border border-border/60 bg-[hsl(271,32%,8%)] shadow-[0_28px_90px_rgba(0,0,0,0.34)] overflow-hidden">
+        <div className="h-11 border-b border-border/50 bg-[rgba(255,255,255,0.03)] px-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 rounded-full bg-[rgba(255,255,255,0.18)]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[rgba(255,255,255,0.14)]" />
+            <span className="w-2.5 h-2.5 rounded-full bg-[rgba(255,255,255,0.10)]" />
+          </div>
+          <div className="inline-flex items-center gap-2 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+            <Monitor className="w-3.5 h-3.5" />
+            Desktop web
+          </div>
+        </div>
+        <div className="grid md:grid-cols-[260px_1fr] min-h-[440px]">
+          <div className="border-r border-border/50 bg-[rgba(255,255,255,0.025)] p-4 space-y-3">
+            <div className="rounded-xl border border-border/40 bg-background/40 px-3 py-2 flex items-center gap-2 text-xs text-muted-foreground">
+              <Search className="w-3.5 h-3.5" />
+              Search your shelf
+            </div>
+            <div className="space-y-2">
+              {SHELF_MOCK.map((book) => (
+                <ShelfBookRow key={`desktop-${book.title}`} book={book} />
+              ))}
+            </div>
+          </div>
+          <div className="p-4 sm:p-5 space-y-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-primary/90 font-semibold">
+                  Now reading
+                </p>
+                <h3 className="font-serif text-2xl text-foreground">
+                  Project Hail Mary
+                </h3>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">
+                <MessageSquareText className="w-3 h-3" />
+                Review prompt ready
+              </div>
+            </div>
+            <div className="grid lg:grid-cols-[1.15fr_0.85fr] gap-4">
+              <div className="relative rounded-[24px] overflow-hidden ring-1 ring-border/40 min-h-[290px]">
+                <img
+                  src={`${BASE}scenes/landing/phm.png`}
+                  alt="Project Hail Mary desktop preview"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent" />
+                <div className="absolute top-4 right-4 w-24 rounded-[16px] overflow-hidden ring-1 ring-[var(--jtb-gold-200)]/65 shadow-[0_20px_45px_rgba(0,0,0,0.42)]">
+                  <img
+                    src="https://covers.openlibrary.org/b/isbn/9780593135204-L.jpg"
+                    alt="Project Hail Mary cover"
+                    className="w-full aspect-[2/3] object-cover"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="absolute inset-x-0 bottom-0 p-4 space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                    Chapter 7
+                  </p>
+                  <p className="font-serif text-xl text-white">
+                    First contact, in the dark.
+                  </p>
+                  <p className="text-sm text-white/75">
+                    Reader, shelf, cover, and painted scene all stay connected.
+                  </p>
+                </div>
+              </div>
+              <div className="rounded-[24px] border border-border/40 bg-[rgba(255,255,255,0.03)] p-4 space-y-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/90 font-semibold">
+                    Finish the book
+                  </p>
+                  <h4 className="font-serif text-xl text-foreground">
+                    Rate it, then keep it on your shelf.
+                  </h4>
+                </div>
+                <div className="flex items-center gap-1.5 text-[var(--jtb-gold-200)]">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <Sparkles key={i} className="w-4 h-4" />
+                  ))}
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Reviews are private unless you share them. Resume reading on
+                  desktop, keep going on your phone, and the latest progress is
+                  still there.
+                </p>
+                <div className="rounded-2xl border border-primary/15 bg-primary/10 px-4 py-3 text-sm text-primary/90">
+                  Web app live now. App Store and Google Play are next.
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CrossDeviceShowcase() {
+  return (
+    <section className="relative py-16 sm:py-24 bg-gradient-to-b from-[hsl(271,45%,6%)] via-background to-[hsl(271,45%,7%)]">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+        <div className="max-w-3xl space-y-4">
+          <div className="inline-flex items-center gap-2 jtb-eyebrow bg-primary/10 text-primary px-3 py-1 rounded-full border border-primary/20">
+            <Monitor className="w-3.5 h-3.5" />
+            <span>Built for desktop and phone</span>
+          </div>
+          <h2 className="font-serif text-3xl sm:text-4xl lg:text-5xl tracking-tight leading-[1.08]">
+            Read on your laptop. Pick up on your phone.
+          </h2>
+          <p className="text-muted-foreground text-base sm:text-lg leading-relaxed max-w-3xl">
+            Jump the Book isn’t just a mobile mockup. The web app is the
+            product today, and it already covers the moments that matter:
+            search, reading, scene generation, ratings, imports, and your
+            shelf. Native apps are coming next.
+          </p>
+        </div>
+
+        <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] items-center">
+          <DesktopWorkspaceMock />
+          <div className="flex flex-col gap-6">
+            <div className="mx-auto xl:mx-0">
+              <BookshelfPhone />
+            </div>
+            <div className="rounded-[26px] border border-border/50 bg-[rgba(255,255,255,0.03)] p-5 sm:p-6 space-y-4">
+              <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-[10px] uppercase tracking-[0.18em] text-primary font-semibold">
+                <Smartphone className="w-3 h-3" />
+                App stores coming soon
+              </div>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                The mobile experience matters, but we’re not pretending that’s
+                the only place readers live. Start in the browser now. When the
+                native apps land, the same shelf and scenes come with you.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-5 sm:gap-6">
+          {STORY_FEATURES.map((feature, index) => (
+            <Feature
+              key={feature.title}
+              icon={feature.icon}
+              title={feature.title}
+              body={feature.body}
+              delay={index * 0.05}
+            />
+          ))}
         </div>
       </div>
     </section>
